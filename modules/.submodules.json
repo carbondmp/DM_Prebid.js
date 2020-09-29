@@ -69,5 +69,14 @@
   "fpdModule": [
     "enrichmentFpdModule",
     "validationFpdModule"
+  ],
+  "ppi": [
+    "cacheDestination",
+    "callbackDestination",
+    "gptDestination",
+    "pageDestination",
+    "auctionSource",
+    "cacheSource",
+    "aup"
   ]
 }
