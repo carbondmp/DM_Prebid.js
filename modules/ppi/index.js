@@ -20,6 +20,7 @@ let inventoryRegistry = hbInventory;
  * @return {(Object[])} array of transactionObjects and matched adUnits
  */
 export function requestBids(transactionObjects) {
+  utils.logInfo('[PPI] requestBids, transaction objects', transactionObjects);
   let validationResult = validateTransactionObjects(transactionObjects);
   let transactionResult = [];
   validationResult.invalid.forEach(inv => {
@@ -34,6 +35,7 @@ export function requestBids(transactionObjects) {
     for (const dest in groupedTransactionObjects[source]) {
       let matchObjects = inventoryRegistry.createAdUnits(groupedTransactionObjects[source][dest]);
       sourceRegistry[source].requestBids(matchObjects, (matches) => {
+        utils.logInfo('[PPI] calling destination module [' + dest + '] from source [' + source + ']');
         destinationRegistry[dest].send(matches);
       });
 
@@ -46,6 +48,7 @@ export function requestBids(transactionObjects) {
     }
   }
 
+  utils.logInfo('[PPI] requestBids, transaction result', transactionResult);
   return transactionResult;
 }
 

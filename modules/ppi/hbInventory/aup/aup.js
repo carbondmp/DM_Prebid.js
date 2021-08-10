@@ -156,10 +156,11 @@ export function matchAUPs(transactionObjects, adUnitPatterns) {
         break;
       case 1:
         aup = aups[0];
+        utils.logInfo('[PPI] Transaction object', to, 'matched AUP', aup);
         lock.add(aup);
         break;
       default:
-        utils.logWarn('[PPI] More than one AUP matched, for transaction object. Will take the first one', to, aups);
+        utils.logWarn('[PPI] More than one AUP matched, for transaction object', to, 'Taking the first one', aups);
         aup = aups[0];
         lock.add(aup);
         break;
