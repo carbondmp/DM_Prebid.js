@@ -346,6 +346,7 @@ export function applyFirstPartyData(adUnit, adUnitPattern, transactionObject) {
     adUnit.ortb2Imp = transactionObject.hbInventory.ortb2Imp;
   }
 
+  utils.deepSetValue(adUnit, 'ortb2Imp.ext.data.ppi.source', transactionObject.hbSource.type);
   utils.deepSetValue(adUnit, 'ortb2Imp.ext.data.ppi.destination', transactionObject.hbDestination.type);
 
   let elementId = utils.deepAccess(transactionObject, 'hbDestination.values.div') || getDivId(transactionObject, adUnitPattern);
