@@ -290,5 +290,23 @@ describe('ppiTest', () => {
       expect(res[2].adUnit.code).to.equal('pattern-2');
       expect(newAuctionHeld).to.equal(true);
     });
+
+    it('should add PPI fpd', () => {
+      sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+        bidsBackHandler();
+      });
+
+      let tos = utils.deepClone(transactionObjects);
+      tos[0].hbSource.type = 'auction';
+      tos[2].hbDestination.type = 'gpt';
+
+      let res = ppi.requestBids(transactionObjects);
+      expect(res[0].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('auction');
+      expect(res[2].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('cache');
+      expect(res[0].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('page');
+      expect(res[2].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('gpt');
+      expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-1');
+      expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-5');
+    });
   });
 });
