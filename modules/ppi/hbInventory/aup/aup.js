@@ -433,9 +433,7 @@ export function transformAutoSlots(transactionObject) {
         },
         ortb2Imp: transactionObject.hbInventory.ortb2Imp,
       },
-      hbSource: {
-        type: transactionObject.hbSource.type,
-      },
+      hbSource: transactionObject.hbSource,
       hbDestination: transactionObject.hbDestination,
     };
 
