@@ -1,6 +1,7 @@
 import Set from 'core-js-pure/features/set';
 import { getGlobal } from '../../../src/prebidGlobal.js';
 import * as utils from '../../../src/utils.js';
+import { setTargeting as setAmazonTargeting } from '../../ppi/hbSource/amazonSource.js';
 
 window.googletag = window.googletag || {};
 window.googletag.cmd = window.googletag.cmd || [];
@@ -28,6 +29,7 @@ export const gptDestinationSubmodule = {
       let gptSlotsToRefresh = [];
       let adUnitCodes = [];
       let mappings = {};
+      let hasAmazonEnabled = false;
       matchObjects.forEach(matchObj => {
         matchObj.transactionObject.hbDestination.values = matchObj.transactionObject.hbDestination.values || {};
         let divId = matchObj.transactionObject.hbDestination.values.div || matchObj.transactionObject.divId;
@@ -73,8 +75,14 @@ export const gptDestinationSubmodule = {
         adUnitCodes.push(code);
 
         mappings[code] = divId;
+        if (!hasAmazonEnabled && utils.deepAccess(matchObj.transactionObject, 'hbSource.amazonEnabled')) {
+          hasAmazonEnabled = true;
+        }
       });
       setTargeting(adUnitCodes, mappings);
+      if (hasAmazonEnabled) {
+        setAmazonTargeting();
+      }
       window.googletag.pubads().refresh(gptSlotsToRefresh);
     });
   },
@@ -117,7 +125,7 @@ function validateExistingSlot(gptSlot, adUnitPath, adUnitSizes, divId) {
   }
 }
 
-function getDivIdGPTSlotMapping() {
+export function getDivIdGPTSlotMapping() {
   let mappings = {};
   window.googletag.pubads().getSlots().forEach(slot => {
     mappings[slot.getSlotElementId()] = slot;
