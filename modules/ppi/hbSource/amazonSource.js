@@ -1,23 +1,21 @@
 import { deepAccess, isFn, logError, logInfo, logWarn } from '../../../src/utils.js';
-import { getDivIdGPTSlotMapping } from '../hbDestination/gptDestination.js';
 
 const APSTAG_TIMEOUT = 5000;
 
 export function fetchBids(matchObjects, callback) {
   if (!isFn(deepAccess(window, 'apstag.fetchBids'))) {
     logError(`apstag.js library is not loaded on the page. Please load and initialize the library before calling amazon to fetch bids. Continuing without amazon bids`);
-    return callback();
+    callback();
+    return;
   }
 
   let slots = createAmazonSlots(matchObjects);
   let callbackExecuted = false;
 
   let timeoutId = setTimeout(() => {
-    if (!callbackExecuted) {
-      logError(`Didn't receive response from apstag for ${APSTAG_TIMEOUT} ms. Continuing without amazon bids.`);
-      callbackExecuted = true;
-      callback();
-    }
+    logError(`Didn't receive response from apstag for ${APSTAG_TIMEOUT} ms. Continuing without amazon bids.`);
+    callbackExecuted = true;
+    callback();
   }, APSTAG_TIMEOUT);
   window.apstag.fetchBids({ slots }, (bids) => {
     if (callbackExecuted) {
@@ -31,23 +29,39 @@ export function fetchBids(matchObjects, callback) {
   });
 }
 
+function getDivIdSlotNameMapping() {
+  let mappings = {};
+  window.googletag.pubads().getSlots().forEach(slot => {
+    mappings[slot.getSlotElementId()] = slot.getAdUnitPath();
+  });
+
+  return mappings;
+}
+
 export function createAmazonSlots(matchObjects) {
-  let mappings = getDivIdGPTSlotMapping();
-  return matchObjects.map(matchObject => {
+  let mappings = getDivIdSlotNameMapping();
+  let amazonSlots = [];
+
+  matchObjects.forEach(matchObject => {
     let slotID = matchObject.transactionObject.hbDestination.values.div || matchObject.transactionObject.divId;
     let slotName = matchObject.transactionObject.slotName;
     if (!slotName) {
-      let slot = mappings[slotID];
-      if (slot) {
-        slotName = slot.getAdUnitPath();
-      }
+      slotName = mappings[slotID];
     }
-    return {
+
+    if (!slotID || !slotName) {
+      logWarn(`Couldn't find div id (${slotID}) or slot name (${slotName}), will not request bids from amazon for this transaction object`);
+      return;
+    }
+
+    amazonSlots.push({
       slotID,
       slotName,
       sizes: deepAccess(matchObject.adUnit, 'mediaTypes.banner.sizes'),
-    }
+    });
   });
+
+  return amazonSlots;
 }
 
 export function setTargeting() {
