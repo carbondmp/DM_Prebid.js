@@ -2,6 +2,8 @@ import { expect } from 'chai';
 import { hbSource } from 'modules/ppi/hbSource/hbSource.js';
 import { config as configObj } from 'src/config.js';
 import prebid from '../../../src/prebid.js';
+import { makeSlot } from '../integration/faker/googletag.js';
+import { createAmazonSlots, fetchBids } from 'modules/ppi/hbSource/amazonSource.js';
 
 describe('test ppi hbSource submodule', () => {
   let sandbox;
@@ -305,5 +307,96 @@ describe('test ppi hbSource submodule', () => {
     expect(destMos.some(mo => mo.adUnit == undefined)).to.be.true;
     expect(destMos.some(mo => mo.adUnit && mo.adUnit.code == 'test-1' && mo.values.bids[0].auctionId == '1234-56789-0000')).to.be.true;
     expect(destMos.some(mo => mo.adUnit && mo.adUnit.code == 'test-2' && mo.values.auctionId == '1234-56789-0001')).to.be.true;
+  });
+});
+
+describe('test ppi amazon support', () => {
+  let sandbox;
+  beforeEach(() => {
+    configObj.setConfig({ useBidCache: false });
+    sandbox = sinon.sandbox.create();
+  });
+
+  afterEach(() => {
+    sandbox.restore();
+  });
+
+  let matches = [{
+    transactionObject: {
+      divId: 'div1',
+      slotName: 'slot1'
+    },
+  }, {
+    transactionObject: {
+      divId: 'test-div',
+    }
+  }, {
+    transactionObject: {
+      divId: 'not found'
+    }
+  }];
+
+  const attachApstag = () => {
+    window.apstag = {
+      fetchBids: (data, callback) => {
+        window.apstag._fetchBidsCalled = true;
+        callback();
+      },
+      setDisplayBids: () => {
+        window.apstag._targetingSet = true;
+      },
+      _targetingSet: false,
+      _fetchBidsCalled: false,
+    };
+  };
+
+  it('should create amazon slots', () => {
+    makeSlot({ code: 'test-unit', divId: 'test-div' });
+    let amazonSlots = createAmazonSlots(matches);
+    expect(amazonSlots.length).to.equal(2);
+    expect(amazonSlots[0].slotName).to.equal('slot1');
+    expect(amazonSlots[1].slotName).to.equal('test-unit');
+  });
+
+  it('should continue when amazon is not available', () => {
+    let callbackExecuted = false;
+    let callback = () => {
+      callbackExecuted = true;
+    };
+    fetchBids([], callback);
+    expect(callbackExecuted).to.equal(true);
+  });
+
+  it('should call amazon to fetch bids', () => {
+    attachApstag();
+    let callbackExecuted = 0;
+    let callback = () => {
+      callbackExecuted++;
+    };
+
+    fetchBids([], callback);
+
+    expect(callbackExecuted).to.equal(1);
+    expect(window.apstag._fetchBidsCalled).to.equal(false);
+
+    fetchBids(matches, callback);
+    expect(callbackExecuted).to.equal(2);
+    expect(window.apstag._fetchBidsCalled).to.equal(true);
+  });
+
+  it('should call amazon and pbjs at the same time', () => {
+    attachApstag();
+    let bidsRequested = false;
+    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+      bidsBackHandler();
+    });
+
+    let matches = [{ adUnit: { code: 'test-unit' }, transactionObject: { divId: 'test-div', hbSource: { amazonEnabled: true } } }];
+    hbSource['auction'].requestBids(matches, () => {
+      bidsRequested = true;
+    });
+
+    expect(bidsRequested).to.equal(true);
+    expect(window.apstag._fetchBidsCalled).to.equal(true);
   });
 });

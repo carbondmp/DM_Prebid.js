@@ -1,25 +1,32 @@
 import { deepAccess, isFn, logError, logInfo, logWarn } from '../../../src/utils.js';
-
-const APSTAG_TIMEOUT = 5000;
+import { config } from '../../../src/config.js';
 
 export function fetchBids(matchObjects, callback) {
   if (!isFn(deepAccess(window, 'apstag.fetchBids'))) {
-    logError(`apstag.js library is not loaded on the page. Please load and initialize the library before calling amazon to fetch bids. Continuing without amazon bids`);
+    logError(`apstag.js library is not loaded on the page. Please load and initialize the library before calling amazon to fetch bids. Continuing without amazon bids.`);
     callback();
     return;
   }
 
   let slots = createAmazonSlots(matchObjects);
+  if (!slots.length) {
+    logWarn(`Couldn't create amazon slots to fetch bids. Continuing without amazon bids.`)
+    callback();
+    return;
+  }
+
   let callbackExecuted = false;
 
+  let apstagTimeout = config.getConfig('bidderTimeout');
+
   let timeoutId = setTimeout(() => {
-    logError(`Didn't receive response from apstag for ${APSTAG_TIMEOUT} ms. Continuing without amazon bids.`);
+    logError(`Didn't receive response from apstag for ${apstagTimeout} ms. Continuing without amazon bids.`);
     callbackExecuted = true;
     callback();
-  }, APSTAG_TIMEOUT);
+  }, apstagTimeout);
   window.apstag.fetchBids({ slots }, (bids) => {
     if (callbackExecuted) {
-      logWarn(`Callback was already executed, bids arrived too late. Continuing without amazon bids`);
+      logWarn(`Callback was already executed, bids arrived too late. Continuing without amazon bids.`);
       return;
     }
     logInfo(`Received amazon bids: `, bids);
@@ -43,7 +50,7 @@ export function createAmazonSlots(matchObjects) {
   let amazonSlots = [];
 
   matchObjects.forEach(matchObject => {
-    let slotID = matchObject.transactionObject.hbDestination.values.div || matchObject.transactionObject.divId;
+    let slotID = deepAccess(matchObject.transactionObject, 'hbDestination.values.div') || matchObject.transactionObject.divId;
     let slotName = matchObject.transactionObject.slotName;
     if (!slotName) {
       slotName = mappings[slotID];
