@@ -136,6 +136,11 @@ export function validateTransactionObjects(transactionObjects) {
       });
     }
 
+    if (to.hbSource.amazonEnabled && to.hbDestination.type !== 'gpt') {
+      utils.logWarn(`Amazon bids are enabled only for 'gpt' destination. Disabling amazon for transaction object: `, to);
+      to.hbSource.amazonEnabled = false;
+    }
+
     valid.push(to);
   });
 
