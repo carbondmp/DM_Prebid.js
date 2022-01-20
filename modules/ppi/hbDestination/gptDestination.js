@@ -123,7 +123,7 @@ function validateExistingSlot(gptSlot, adUnitPath, adUnitSizes, divId) {
   }
 }
 
-export function getDivIdGPTSlotMapping() {
+function getDivIdGPTSlotMapping() {
   let mappings = {};
   window.googletag.pubads().getSlots().forEach(slot => {
     mappings[slot.getSlotElementId()] = slot;
