@@ -37,9 +37,9 @@ export const cacheSourceSubmodule = {
         if (cachedMatchesReady && auctionExecuted) {
           callback(emptyCacheMatches.concat(readyMatches));
         } else if (!auctionExecuted) {
-          callback(emptyCacheMatches);
+          callback(readyMatches);
           // empty this array so that later '.concat' won't duplicate refreshes for some slots
-          emptyCacheMatches = [];
+          readyMatches = [];
         }
       }
     }
@@ -87,8 +87,8 @@ export const cacheSourceSubmodule = {
       readyMatches.push(matchObj);
     });
 
-    if (readyMatches.length && utils.isFn(callback)) {
-      cachedMatchesReady = true;
+    cachedMatchesReady = true;
+    if (readyMatches.length) {
       wrappedCallback();
     }
 
@@ -112,10 +112,8 @@ export const cacheSourceSubmodule = {
             };
           });
 
-          if (utils.isFn(callback)) {
-            auctionExecuted = true;
-            wrappedCallback();
-          }
+          auctionExecuted = true;
+          wrappedCallback();
         }
       });
     }
