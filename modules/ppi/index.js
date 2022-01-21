@@ -136,9 +136,9 @@ export function validateTransactionObjects(transactionObjects) {
       });
     }
 
-    if (to.hbSource.amazonEnabled && to.hbDestination.type !== 'gpt') {
-      utils.logWarn(`Amazon bids are enabled only for 'gpt' destination. Disabling amazon for transaction object: `, to);
-      to.hbSource.amazonEnabled = false;
+    if (to.hbSource.values && to.hbSource.values.amazonEnabled && to.hbDestination.type !== 'gpt') {
+      utils.logWarn(`[PPI] Amazon bids are enabled only for 'gpt' destination. Disabling amazon for transaction object: `, to);
+      to.hbSource.values.amazonEnabled = false;
     }
 
     valid.push(to);

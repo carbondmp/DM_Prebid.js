@@ -391,7 +391,7 @@ describe('test ppi amazon support', () => {
       bidsBackHandler();
     });
 
-    let matches = [{ adUnit: { code: 'test-unit' }, transactionObject: { divId: 'test-div', hbSource: { amazonEnabled: true } } }];
+    let matches = [{ adUnit: { code: 'test-unit' }, transactionObject: { divId: 'test-div', hbSource: { values: { amazonEnabled: true } } } }];
     hbSource['auction'].requestBids(matches, () => {
       bidsRequested = true;
     });
