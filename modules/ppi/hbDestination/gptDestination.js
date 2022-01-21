@@ -75,7 +75,7 @@ export const gptDestinationSubmodule = {
         adUnitCodes.push(code);
 
         mappings[code] = divId;
-        hasAmazonEnabled = hasAmazonEnabled || utils.deepAccess(matchObj.transactionObject, 'hbSource.amazonEnabled');
+        hasAmazonEnabled = hasAmazonEnabled || utils.deepAccess(matchObj.transactionObject, 'hbSource.values.amazonEnabled');
       });
       setTargeting(adUnitCodes, mappings);
       if (hasAmazonEnabled) {

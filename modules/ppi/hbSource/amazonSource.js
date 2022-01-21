@@ -3,14 +3,14 @@ import { config } from '../../../src/config.js';
 
 export function fetchBids(matchObjects, callback) {
   if (!isFn(deepAccess(window, 'apstag.fetchBids'))) {
-    logError(`apstag.js library is not loaded on the page. Please load and initialize the library before calling amazon to fetch bids. Continuing without amazon bids.`);
+    logError(`[PPI] apstag.js library is not loaded on the page. Please load and initialize the library before calling amazon to fetch bids. Continuing without amazon bids.`);
     callback();
     return;
   }
 
   let slots = createAmazonSlots(matchObjects);
   if (!slots.length) {
-    logWarn(`Couldn't create amazon slots to fetch bids. Continuing without amazon bids.`)
+    logWarn(`[PPI] Couldn't create amazon slots to fetch bids. Continuing without amazon bids.`)
     callback();
     return;
   }
@@ -20,16 +20,16 @@ export function fetchBids(matchObjects, callback) {
   let apstagTimeout = config.getConfig('bidderTimeout');
 
   let timeoutId = setTimeout(() => {
-    logError(`Didn't receive response from apstag for ${apstagTimeout} ms. Continuing without amazon bids.`);
+    logError(`[PPI] Didn't receive response from apstag for ${apstagTimeout} ms. Continuing without amazon bids.`);
     callbackExecuted = true;
     callback();
   }, apstagTimeout);
   window.apstag.fetchBids({ slots }, (bids) => {
     if (callbackExecuted) {
-      logWarn(`Callback was already executed, bids arrived too late. Continuing without amazon bids.`);
+      logWarn(`[PPI] Callback was already executed, bids arrived too late. Continuing without amazon bids.`);
       return;
     }
-    logInfo(`Received amazon bids: `, bids);
+    logInfo(`[PPI] Received amazon bids: `, bids);
     callbackExecuted = true;
     clearTimeout(timeoutId);
     callback();
@@ -57,7 +57,7 @@ export function createAmazonSlots(matchObjects) {
     }
 
     if (!slotID || !slotName) {
-      logWarn(`Couldn't find div id (${slotID}) or slot name (${slotName}), will not request bids from amazon for this transaction object`);
+      logWarn(`[PPI] Couldn't find div id (${slotID}) or slot name (${slotName}), will not request bids from amazon for this transaction object`);
       return;
     }
 

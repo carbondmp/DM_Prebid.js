@@ -133,6 +133,9 @@
                         },
                         hbSource: {
                             type: 'auction',
+                            values: {
+                                amazonEnabled: true,
+                            }
                         },
                         hbDestination: {
                             type: 'gpt',
@@ -148,6 +151,9 @@
                         },
                         hbSource: {
                             type: 'auction',
+                            values: {
+                                amazonEnabled: true,
+                            }
                         },
                         hbDestination: {
                             type: 'gpt',
@@ -162,6 +168,18 @@
     </script>
 
     <script type="text/javascript" src="https://securepubads.g.doubleclick.net/tag/js/gpt.js" async></script>
+    <script src="https://c.amazon-adsystem.com/aax2/apstag.js"></script>
+    <script>
+        let amazonConfig = {
+            adServer: "googletag",
+            bidTimeout: 5000,
+            gdpr: { cmpTimeout: 16000 },
+            params: {},
+            pubID: "1",
+        }
+
+        window.apstag.init(amazonConfig);
+    </script>
     <script async src="../../build/dev/prebid.js"></script>
 </head>
 

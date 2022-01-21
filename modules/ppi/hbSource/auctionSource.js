@@ -28,7 +28,7 @@ export const auctionSourceSubmodule = {
       }
     }
 
-    let matchesWithAmazon = matchObjects.filter(matchObject => utils.deepAccess(matchObject.transactionObject, 'hbSource.amazonEnabled'));
+    let matchesWithAmazon = matchObjects.filter(matchObject => utils.deepAccess(matchObject.transactionObject, 'hbSource.values.amazonEnabled'));
     if (matchesWithAmazon.length) {
       amazonExecuted = false;
       fetchBids(matchesWithAmazon, () => {

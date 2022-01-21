@@ -44,9 +44,9 @@ export const cacheSourceSubmodule = {
       }
     }
 
-    let matchesWithAmazon = matchObjects.filter(matchObject => utils.deepAccess(matchObject.transactionObject, 'hbSource.amazonEnabled'));
+    let matchesWithAmazon = matchObjects.filter(matchObject => utils.deepAccess(matchObject.transactionObject, 'hbSource.values.amazonEnabled'));
     if (matchesWithAmazon.length) {
-      utils.logWarn(`Amazon is enabled for some transaction objects. Fetching amazon bids before refreshing actual slots`);
+      utils.logWarn(`[PPI] Amazon is enabled for some transaction objects. Fetching amazon bids before refreshing actual slots`);
       amazonExecuted = false;
       fetchBids(matchesWithAmazon, () => {
         amazonExecuted = true;
