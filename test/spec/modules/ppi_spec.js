@@ -300,7 +300,7 @@ describe('ppiTest', () => {
       tos[0].hbSource.type = 'auction';
       tos[2].hbDestination.type = 'gpt';
 
-      let res = ppi.requestBids(transactionObjects);
+      let res = ppi.requestBids(tos);
       expect(res[0].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('auction');
       expect(res[2].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('cache');
       expect(res[0].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('page');
