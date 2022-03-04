@@ -8,7 +8,7 @@ import find from 'core-js-pure/features/array/find.js';
  * @return {(Object[])} array of sizes formatted [[w,h],...]
  */
 export function findAUPSizes(aup) {
-  let respSizes = utils.deepAccess(aup, 'mediaTypes.banner.responsiveSizes');
+  let respSizes = utils.deepAccess(aup, 'mediaTypes.banner.sizeConfig');
   if (respSizes && respSizes.length) {
     return filterResponsiveSizes(respSizes, getViewport());
   }
@@ -79,16 +79,16 @@ function getGptSlotSizes(gptSlot) {
  * @param {Array} viewport dimensions [width, height]
  * @returns {Array} of available sizes based on current viewport or undefined if no matching viewport found
  */
-function filterResponsiveSizes(responsiveSizes, viewport) {
-  if (!responsiveSizes) {
+function filterResponsiveSizes(sizeConfig, viewport) {
+  if (!sizeConfig) {
     return;
   }
 
   let sizes;
   try {
-    // sort responsiveSizes from biggest to smallest viewport
+    // sort sizeConfig from biggest to smallest viewport
     // then find the biggest one that fits in the given viewport
-    let val = (find(responsiveSizes.sort((a, b) => {
+    let val = (find(sizeConfig.sort((a, b) => {
       let aVP = a.minViewPort;
       let bVP = b.minViewPort;
       return bVP[0] * bVP[1] - aVP[0] * aVP[1] || bVP[0] - aVP[0] || bVP[1] - aVP[1];
@@ -97,7 +97,7 @@ function filterResponsiveSizes(responsiveSizes, viewport) {
     }));
     sizes = val && val.sizes;
   } catch (e) {
-    utils.logError('[PPI] while parsing responsiveSizes:', responsiveSizes, e);
+    utils.logError('[PPI] while parsing sizeConfig:', sizeConfig, e);
   }
 
   return sizes;
