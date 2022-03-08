@@ -4,6 +4,7 @@ import { getGlobal } from '../../src/prebidGlobal.js';
 import { hbSource } from './hbSource/hbSource.js';
 import { hbDestination } from './hbDestination/hbDestination.js';
 import { hbInventory } from './hbInventory/hbInventory.js';
+import { addAdUnitPatterns } from './hbInventory/aup/aup.js';
 
 let destinationRegistry = hbDestination;
 let sourceRegistry = hbSource;
@@ -19,7 +20,13 @@ let inventoryRegistry = hbInventory;
  * @param {(Object[])} transactionObjects
  * @return {(Object[])} array of transactionObjects and matched adUnits
  */
-export function requestBids(transactionObjects) {
+export function requestBids(transactionObjects, requestOptions = {}) {
+  const { adUnitCodes, adUnits, bidsBackHandler, ppi, ...requestBidsParameters } = requestOptions;
+
+  if (ppi && ppi.adUnitPatterns) {
+    addAdUnitPatterns(ppi.adUnitPatterns);
+  }
+
   utils.logInfo('[PPI] requestBids, transaction objects', transactionObjects);
   let validationResult = validateTransactionObjects(transactionObjects);
   let transactionResult = [];
@@ -34,10 +41,15 @@ export function requestBids(transactionObjects) {
   for (const source in groupedTransactionObjects) {
     for (const dest in groupedTransactionObjects[source]) {
       let matchObjects = inventoryRegistry.createAdUnits(groupedTransactionObjects[source][dest]);
-      sourceRegistry[source].requestBids(matchObjects, (matches) => {
-        utils.logInfo('[PPI] calling destination module [' + dest + '] from source [' + source + ']');
-        destinationRegistry[dest].send(matches);
-      });
+      sourceRegistry[source]
+        .requestBids({
+          matchObjects,
+          requestBidsParameters,
+          callback: (matches) => {
+            utils.logInfo('[PPI] calling destination module [' + dest + '] from source [' + source + ']');
+            destinationRegistry[dest].send(matches);
+          }
+        });
 
       matchObjects.forEach(matchObj => {
         transactionResult.push({
