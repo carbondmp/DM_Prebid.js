@@ -16,12 +16,13 @@ export const auctionSourceSubmodule = {
    * @param {(Object[])} matchObjects array of transactionObjects and matched adUnits
    * @param {function} callback
    */
-  requestBids(matchObjects, callback) {
+  requestBids({ matchObjects, requestBidsParameters, callback }) {
     utils.logInfo('[PPI] Triggering new HB auction');
 
     let pbjs = getGlobal();
     pbjs.requestBids({
       adUnits: matchObjects.filter(mo => mo.adUnit).map(mo => mo.adUnit),
+      ...requestBidsParameters,
       bidsBackHandler: (bids, timedOut, auctionId) => {
         utils.logInfo('[PPI] - bids from bidsBackHandler: ', bids);
 

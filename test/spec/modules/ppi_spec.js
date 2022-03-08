@@ -311,5 +311,49 @@ describe('ppiTest', () => {
       expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-1');
       expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-5');
     });
+
+    it('should pass prebid.ppi.requestBids parameters to prebid.requestBids()', (done) => {
+      const options = {
+        timeout: 2000,
+        labels: ['sports', 'gaming'],
+        auctionId: 'my-own-auction-id',
+        adUnitCodes: ['div1', 'div2', 'div3'], // should be discarded
+        bidsBackHandler: () => {
+          throw new Error('ppi should not pass bidsBackHandler to prebid.requestBids');
+        }
+      };
+
+      sandbox.stub(prebid, 'requestBids').callsFake(({ timeout, labels, auctionId, bidsBackHandler }) => {
+        expect(timeout).to.equal(options.timeout);
+        expect(labels).to.deep.equal(options.labels);
+        expect(auctionId).to.equal(options.auctionId);
+        expect(bidsBackHandler).to.not.equal(options.bidsBackHandler);
+        done();
+      });
+
+      let tos = utils.deepClone(transactionObjects);
+
+      ppi.requestBids(tos, options);
+    });
+
+    it('should add adUnitPatterns passed via options.ppi', (done) => {
+      // Let's be sure that ad unit patterns is empty
+      while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+
+      const options = {
+        ppi: {
+          adUnitPatterns
+        }
+      };
+
+      let counter = 0;
+      sandbox.stub(prebid, 'requestBids').callsFake(() => {
+        expect(aup.adUnitPatterns.length).to.equal(2);
+        done();
+      });
+
+      let tos = utils.deepClone(transactionObjects);
+      ppi.requestBids(tos, options);
+    });
   });
 });
