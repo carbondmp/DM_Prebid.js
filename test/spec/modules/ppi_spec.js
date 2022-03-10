@@ -340,19 +340,21 @@ describe('ppiTest', () => {
       // Let's be sure that ad unit patterns is empty
       while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
 
+      // passing only one adUnitPattern, divPattern: '^test-.$'
       const options = {
         ppi: {
-          adUnitPatterns
+          adUnitPatterns: [adUnitPatterns[1]]
         }
       };
 
-      let counter = 0;
-      sandbox.stub(prebid, 'requestBids').callsFake(() => {
-        expect(aup.adUnitPatterns.length).to.equal(2);
+      const spy = sandbox.stub(prebid, 'requestBids').onCall(0).callsFake(() => {
+        expect(spy.firstCall.args[0].adUnits[0].code).to.equal(adUnitPatterns[1].code);
+        expect(spy.calledOnce).to.be.true;
         done();
       });
 
       let tos = utils.deepClone(transactionObjects);
+      tos[0].hbSource.type = 'auction';
       ppi.requestBids(tos, options);
     });
   });
