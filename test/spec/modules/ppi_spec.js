@@ -311,4 +311,5 @@ describe('ppiTest', () => {
       expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-1');
       expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-5');
     });
+  });
 });
