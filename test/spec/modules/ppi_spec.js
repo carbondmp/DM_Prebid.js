@@ -308,7 +308,7 @@ describe('ppiTest', () => {
       expect(res[2].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('cache');
       expect(res[0].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('page');
       expect(res[2].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('gpt');
-      expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-1');
-      expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-5');
+      expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-1');
+      expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-5');
     });
 });
