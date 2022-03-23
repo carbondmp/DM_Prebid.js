@@ -42,8 +42,7 @@ export const cacheSourceSubmodule = {
 
       let bids = responses.bids
         .filter(filters.isUnusedBid)
-        .filter(filters.isBidNotExpired)
-        .filter(bid => bid.cpm > 0);
+        .filter(filters.isBidNotExpired);
 
       if (!bids || !bids.length) {
         utils.logInfo(`[PPI] - did not find any bid for ${matchObj.adUnit.code}, queuing it for new HB auction`);
