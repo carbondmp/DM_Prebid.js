@@ -393,12 +393,12 @@ export function addMtoToPattern(adUnitPattern) {
   let pbjs = getGlobal();
 
   try {
-    adUnitPattern.mediaTypes = pbjs.ppi.mtoConfigMap[adUnitPattern.mtoRevId].mediaTypes;
+    adUnitPattern.mediaTypes = pbjs.ppi.mtoConfigMap[adUnitPattern.mtoId].mediaTypes;
   } catch (e) {
     utils.logError('[PPI] Unable to resolve the mediaTypes for adUnitPattern', adUnitPattern, e);
     return false;
   }
-  delete adUnitPattern.mtoRevId;
+  delete adUnitPattern.mtoId;
 
   return true;
 }

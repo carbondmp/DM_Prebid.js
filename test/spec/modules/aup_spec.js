@@ -548,7 +548,7 @@ describe('add MTO to adUnitPattern', () => {
           }
         }
       ],
-      mtoRevId: 1234
+      mtoId: 1234
     },
     {
       slotPattern: '',
@@ -563,7 +563,7 @@ describe('add MTO to adUnitPattern', () => {
           }
         }
       ],
-      mtoRevId: 5678
+      mtoId: 5678
     }
   ];
 
@@ -592,9 +592,9 @@ describe('add MTO to adUnitPattern', () => {
     }
 
     expect(patterns[0].mediaTypes).to.equal(PBJS.ppi.mtoConfigMap[1234].mediaTypes);
-    expect(patterns[0].mtoRevId).to.equal(undefined);
+    expect(patterns[0].mtoId).to.equal(undefined);
     expect(patterns[1].mediaTypes).to.equal(PBJS.ppi.mtoConfigMap[5678].mediaTypes);
-    expect(patterns[1].mtoRevId).to.equal(undefined);
+    expect(patterns[1].mtoId).to.equal(undefined);
   });
 
   it('should fail attaching MTOs', () => {
@@ -607,9 +607,9 @@ describe('add MTO to adUnitPattern', () => {
     }
 
     expect(patterns[0].mediaTypes).to.equal(undefined);
-    expect(patterns[0].mtoRevId).to.equal(1234);
+    expect(patterns[0].mtoId).to.equal(1234);
     expect(patterns[1].mediaTypes).to.equal(undefined);
-    expect(patterns[1].mtoRevId).to.equal(5678);
+    expect(patterns[1].mtoId).to.equal(5678);
   });
 
   it('should attach MTO to one pattern and fail on the second', () => {
@@ -634,9 +634,9 @@ describe('add MTO to adUnitPattern', () => {
     }
 
     expect(patterns[0].mediaTypes).to.equal(PBJS.ppi.mtoConfigMap[1234].mediaTypes);
-    expect(patterns[0].mtoRevId).to.equal(undefined);
+    expect(patterns[0].mtoId).to.equal(undefined);
     expect(patterns[1].mediaTypes).to.equal(undefined);
-    expect(patterns[1].mtoRevId).to.equal(5678);
+    expect(patterns[1].mtoId).to.equal(5678);
   });
 });
 
