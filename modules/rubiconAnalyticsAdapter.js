@@ -552,8 +552,9 @@ function subscribeToGamSlots() {
       (Object.keys(cache.auctions[auctionId].bids) || []).forEach(bidId => {
         let bid = cache.auctions[auctionId].bids[bidId];
         // if this slot matches this bids adUnit, add the adUnit info
-        // only mark it if it already has not been marked
-        if (!bid.adUnit.gamRendered && isMatchingAdSlot(bid.adUnit.adUnitCode)) {
+        // if the code is present in the elementIdMap then we use the matched id as code here
+        const elementIds = cache.auctions[auctionId].elementIdMap[bid.adUnit.adUnitCode] || [bid.adUnit.adUnitCode];
+        if (!bid.adUnit.gamRendered && elementIds.some(isMatchingAdSlot)) {
           // mark this adUnit as having been rendered by gam
           cache.auctions[auctionId].gamHasRendered[bid.adUnit.adUnitCode] = true;
 
@@ -687,6 +688,15 @@ let rubiconAdapter = Object.assign({}, baseAdapter, {
         cacheEntry.userIds = Object.keys(deepAccess(args, 'bidderRequests.0.bids.0.userId', {})).map(id => {
           return { provider: id, hasId: true }
         });
+        // check if we need to save a map of adUnitCode to elementId
+        cacheEntry.elementIdMap = args.adUnits.reduce((accum, adUnit) => {
+          const elementIds = deepAccess(adUnit, 'ortb2Imp.ext.data.elementid');
+          if (elementIds) {
+            // set it to array if set to string to be careful (should be array of strings)
+            accum[adUnit.code] = typeof elementIds === 'string' ? [elementIds] : elementIds;
+          }
+          return accum;
+        }, {});
         cache.auctions[args.auctionId] = cacheEntry;
         // register to listen to gpt events if not done yet
         if (!cache.gpt.registered && isGptPubadsDefined()) {
