@@ -33,6 +33,12 @@ function makeGPTSlot(adUnitPath, divId, sizes = []) {
   return gptSlot;
 }
 
+after(() => {
+  aup.customMappingFunction = null;
+  aup.aupsMatched = false;
+  while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+});
+
 describe('autoSlot transformation', () => {
   let to = {
     hbInventory: {
@@ -46,6 +52,7 @@ describe('autoSlot transformation', () => {
     }
   };
   const initialSlots = window.googletag.pubads().getSlots();
+
   it('should not create any TOs when no gpt slot is created', () => {
     window.googletag.pubads().setSlots([]);
     let transformed = aup.transformAutoSlots(to);
@@ -76,112 +83,118 @@ describe('autoSlot transformation', () => {
 });
 
 describe('add adUnitPattern', () => {
-  it('should validate aup before adding', () => {
+  let validAUPs = [
+    {
+      slotPattern: '^.*header-bid-tag-0$',
+      divPattern: 'test-*',
+      bids: [
+        {
+          bidder: 'rubicon',
+          params: {
+            accountId: '1001',
+            siteId: '113932',
+            zoneId: '535510',
+          }
+        }
+      ],
+      mediaTypes: {
+        banner: {
+          sizes: [[300, 250], [300, 600]]
+        },
+      },
+    },
+    {
+      // convert size array to matrix
+      slotPattern: '',
+      divPattern: 'test-*',
+      bids: [
+        {
+          bidder: 'rubicon',
+          params: {
+            accountId: '1001',
+            siteId: '113932',
+            zoneId: '535510',
+          }
+        }
+      ],
+      mediaTypes: {
+        banner: {
+          sizes: [1, 1]
+        },
+      },
+    },
+    {
+      // ppi should remove invalid '2' from array sizes
+      slotPattern: '^.*header-bid-tag-0$',
+      divPattern: '',
+      bids: [
+        {
+          bidder: 'rubicon',
+          params: {
+            accountId: '1001',
+            siteId: '113932',
+            zoneId: '535510',
+          }
+        }
+      ],
+      mediaTypes: {
+        banner: {
+          sizes: [[1, 1], 2]
+        },
+      },
+    },
+  ];
+  let invalidAUPs = [
+    {
+      // can't have empty strings for both slotPattern and divPattern
+      slotPattern: '',
+      divPattern: '',
+      bids: [
+        {
+          bidder: 'rubicon',
+          params: {
+            accountId: '1001',
+            siteId: '113932',
+            zoneId: '535510',
+          }
+        }
+      ],
+      mediaTypes: {
+        banner: {
+          sizes: [[300, 250], [300, 600]]
+        },
+      },
+    },
+    {
+      // size can't be boolean
+      slotPattern: '^.*header-bid-tag-0$',
+      divPattern: '',
+      bids: [
+        {
+          bidder: 'rubicon',
+          params: {
+            accountId: '1001',
+            siteId: '113932',
+            zoneId: '535510',
+          }
+        }
+      ],
+      mediaTypes: {
+        banner: {
+          sizes: true
+        },
+      },
+    },
+  ];
+  beforeEach(() => {
     while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
-    let validAUPs = [
-      {
-        slotPattern: '^.*header-bid-tag-0$',
-        divPattern: 'test-*',
-        bids: [
-          {
-            bidder: 'rubicon',
-            params: {
-              accountId: '1001',
-              siteId: '113932',
-              zoneId: '535510',
-            }
-          }
-        ],
-        mediaTypes: {
-          banner: {
-            sizes: [[300, 250], [300, 600]]
-          },
-        },
-      },
-      {
-        // convert size array to matrix
-        slotPattern: '',
-        divPattern: 'test-*',
-        bids: [
-          {
-            bidder: 'rubicon',
-            params: {
-              accountId: '1001',
-              siteId: '113932',
-              zoneId: '535510',
-            }
-          }
-        ],
-        mediaTypes: {
-          banner: {
-            sizes: [1, 1]
-          },
-        },
-      },
-      {
-        // ppi should remove invalid '2' from array sizes
-        slotPattern: '^.*header-bid-tag-0$',
-        divPattern: '',
-        bids: [
-          {
-            bidder: 'rubicon',
-            params: {
-              accountId: '1001',
-              siteId: '113932',
-              zoneId: '535510',
-            }
-          }
-        ],
-        mediaTypes: {
-          banner: {
-            sizes: [[1, 1], 2]
-          },
-        },
-      },
-    ];
-    let invalidAUPs = [
-      {
-        // can't have empty strings for both slotPattern and divPattern
-        slotPattern: '',
-        divPattern: '',
-        bids: [
-          {
-            bidder: 'rubicon',
-            params: {
-              accountId: '1001',
-              siteId: '113932',
-              zoneId: '535510',
-            }
-          }
-        ],
-        mediaTypes: {
-          banner: {
-            sizes: [[300, 250], [300, 600]]
-          },
-        },
-      },
-      {
-        // size can't be boolean
-        slotPattern: '^.*header-bid-tag-0$',
-        divPattern: '',
-        bids: [
-          {
-            bidder: 'rubicon',
-            params: {
-              accountId: '1001',
-              siteId: '113932',
-              zoneId: '535510',
-            }
-          }
-        ],
-        mediaTypes: {
-          banner: {
-            sizes: true
-          },
-        },
-      },
-    ];
+  });
 
+  afterEach(() => {
+    while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+  });
+
+  it('should validate aup before adding', () => {
     aup.addAdUnitPatterns(invalidAUPs);
     expect(aup.adUnitPatterns.length).to.equal(0);
 
@@ -256,6 +269,14 @@ describe('add adUnitPattern', () => {
     },
   ];
 
+  beforeEach(() => {
+    while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+  });
+
+  afterEach(() => {
+    while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+  });
+
   it('should match TO against AUP', () => {
     let tos = [
       {
@@ -306,7 +327,6 @@ describe('add adUnitPattern', () => {
       },
     ];
 
-    while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
     expect(aup.adUnitPatterns.length).to.equal(0);
     aup.addAdUnitPatterns(adUnitPatterns);
     let result = aup.matchAUPs(tos, aup.adUnitPatterns);
@@ -375,7 +395,6 @@ describe('add adUnitPattern', () => {
   });
 
   it('should create pbjs adUnit and match it with transaction Object', () => {
-    while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
     window.googletag.pubads().setSlots([]);
 
     let gptSlotSizes = [[1, 1], [2, 2]];
@@ -446,6 +465,14 @@ describe('add adUnitPattern', () => {
   });
 
   describe('create adUnit', () => {
+    beforeEach(() => {
+      while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+    });
+
+    afterEach(() => {
+      while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+    });
+
     it('should create pbjs adUnit from AUP', () => {
       let sizes = [[1, 1], [1, 2], [2, 1], [2, 2]];
       let sortedSizes = [[2, 2], [1, 2], [2, 1], [1, 1]];
@@ -501,9 +528,11 @@ describe('add adUnitPattern', () => {
 
 describe('add MTO to adUnitPattern', () => {
   const PBJS = getGlobal();
+
   afterEach(function () {
     delete PBJS.ppi.mtoConfigMap;
   });
+
   let adUnitPatterns = [
     {
       slotPattern: '^.*header-bid-tag-.*$',

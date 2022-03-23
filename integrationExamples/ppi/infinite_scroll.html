@@ -86,6 +86,7 @@
         });
     </script>
     <script>
+        let returnedTOs;
         // initial load
         googletag.cmd.push(() => {
             window.pbjs.que.push(() => {
@@ -115,7 +116,7 @@
                         }
                     }
                 ];
-                pbjs.ppi.requestBids(to);
+                returnedTOs = pbjs.ppi.requestBids(to);
             });
         });
     </script>
@@ -143,6 +144,7 @@
             offsetDiv.style.cssText = `height:100vh`;
             let adUnitDiv = document.createElement('div');
             adUnitDiv.id = `test-${pageId}`;
+            adUnitDiv.innerHTML='&nbsp;'
             let description = document.createElement('p');
             description.innerHTML = `Start of the ${pageId}. page`;
 
@@ -167,6 +169,9 @@
                     values: {
                         name: '/19968336/header-bid-tag-0',
                     },
+                    ortb2Imp: {
+                        ...returnedTOs[0]?.transactionObject?.hbInventory?.ortb2Imp
+                    }
                 },
                 hbSource: {
                     type: 'cache',
@@ -186,6 +191,9 @@
                     values: {
                         name: '/19968336/header-bid-tag-0',
                     },
+                    ortb2Imp: {
+                        ...returnedTOs[1]?.transactionObject?.hbInventory?.ortb2Imp
+                    }
                 },
                 hbSource: {
                     type: 'auction',
@@ -196,7 +204,7 @@
             }];
             googletag.destroySlots();
             pbjs.que.push(() => {
-                pbjs.ppi.requestBids(tos);
+                returnedTOs = pbjs.ppi.requestBids(tos);
             });
             createNextPage(++pageLoaded);
         });
@@ -206,7 +214,7 @@
 
     <div style="height:100vh"></div>
     <p>Start of the 2. page</p>
-    <div id="test-2"></div>
+    <div id="test-2">&nbsp;</div>
 </body>
 
 </html>

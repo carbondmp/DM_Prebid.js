@@ -3,6 +3,7 @@ import * as utils from 'src/utils.js';
 import * as ppi from 'modules/ppi/index.js'
 import * as aup from 'modules/ppi/hbInventory/aup/aup.js'
 import { TransactionType } from 'modules/ppi/hbInventory/aup/consts.js'
+import prebid from '../../../src/prebid.js'
 
 describe('ppiTest', () => {
   describe('validate transaction objects', () => {
@@ -259,15 +260,16 @@ describe('ppiTest', () => {
         }
       },
     ];
-    aup.addAdUnitPatterns(adUnitPatterns);
 
     let sandbox;
     beforeEach(() => {
       sandbox = sinon.sandbox.create();
+      aup.addAdUnitPatterns(adUnitPatterns);
     });
 
     afterEach(() => {
       sandbox.restore();
+      while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
     });
 
     it('should cache new bids', () => {
@@ -285,28 +287,28 @@ describe('ppiTest', () => {
       })
 
       let res = ppi.requestBids(tos);
-      expect(res[0].adUnit.code).to.equal('pattern-1');
+      expect(res[0].adUnit.code).to.equal('pattern-2');
       expect(res[1].adUnit).to.be.a('undefined');
-      expect(res[2].adUnit.code).to.equal('pattern-2');
+      expect(res[2].adUnit.code).to.equal('pattern-1');
       expect(newAuctionHeld).to.equal(true);
     });
 
     it('should add PPI fpd', () => {
-      sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+      sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
         bidsBackHandler();
       });
+      sandbox.stub(prebid, 'getHighestCpmBids').onCall(0).returns(null);
 
       let tos = utils.deepClone(transactionObjects);
       tos[0].hbSource.type = 'auction';
       tos[2].hbDestination.type = 'gpt';
 
-      let res = ppi.requestBids(transactionObjects);
+      let res = ppi.requestBids(tos);
       expect(res[0].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('auction');
       expect(res[2].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('cache');
       expect(res[0].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('page');
       expect(res[2].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('gpt');
-      expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-1');
-      expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-5');
+      expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-1');
+      expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-5');
     });
-  });
 });

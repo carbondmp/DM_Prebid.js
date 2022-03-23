@@ -351,7 +351,9 @@ export function applyFirstPartyData(adUnit, adUnitPattern, transactionObject) {
 
   let elementId = utils.deepAccess(transactionObject, 'hbDestination.values.div') || getDivId(transactionObject, adUnitPattern);
   if (elementId) {
-    utils.deepSetValue(adUnit, 'ortb2Imp.ext.data.elementid', elementId);
+    const elementIds = utils.deepAccess(adUnit, 'ortb2Imp.ext.data.elementid', []);
+    elementIds.push(elementId);
+    utils.deepSetValue(adUnit, 'ortb2Imp.ext.data.elementid', elementIds);
   }
 
   let slotName = getSlotName(transactionObject, adUnitPattern);
@@ -364,6 +366,7 @@ export function applyFirstPartyData(adUnit, adUnitPattern, transactionObject) {
     name: 'gam',
     adslot: slotName
   });
+  utils.deepSetValue(transactionObject, 'hbInventory.ortb2Imp', adUnit.ortb2Imp);
 }
 
 /**
