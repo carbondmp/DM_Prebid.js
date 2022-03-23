@@ -308,8 +308,54 @@ describe('ppiTest', () => {
       expect(res[2].adUnit.ortb2Imp.ext.data.ppi.source).to.equal('cache');
       expect(res[0].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('page');
       expect(res[2].adUnit.ortb2Imp.ext.data.ppi.destination).to.equal('gpt');
-      expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-1');
-      expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.equal('test-5');
+      expect(res[0].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-1');
+      expect(res[2].adUnit.ortb2Imp.ext.data.elementid).to.be.an('array').that.includes('test-5');
+    });
+
+    it('should pass prebid.ppi.requestBids parameters to prebid.requestBids()', (done) => {
+      const options = {
+        timeout: 2000,
+        labels: ['sports', 'gaming'],
+        auctionId: 'my-own-auction-id',
+        adUnitCodes: ['div1', 'div2', 'div3'], // should be discarded
+        bidsBackHandler: () => {
+          throw new Error('ppi should not pass bidsBackHandler to prebid.requestBids');
+        }
+      };
+
+      sandbox.stub(prebid, 'requestBids').callsFake(({ timeout, labels, auctionId, bidsBackHandler }) => {
+        expect(timeout).to.equal(options.timeout);
+        expect(labels).to.deep.equal(options.labels);
+        expect(auctionId).to.equal(options.auctionId);
+        expect(bidsBackHandler).to.not.equal(options.bidsBackHandler);
+        done();
+      });
+
+      let tos = utils.deepClone(transactionObjects);
+
+      ppi.requestBids(tos, options);
+    });
+
+    it('should add adUnitPatterns passed via options.ppi', (done) => {
+      // Let's be sure that ad unit patterns is empty
+      while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+
+      // passing only one adUnitPattern, divPattern: '^test-.$'
+      const options = {
+        ppi: {
+          adUnitPatterns: [adUnitPatterns[1]]
+        }
+      };
+
+      const spy = sandbox.stub(prebid, 'requestBids').onCall(0).callsFake(() => {
+        expect(spy.firstCall.args[0].adUnits[0].code).to.equal(adUnitPatterns[1].code);
+        expect(spy.calledOnce).to.be.true;
+        done();
+      });
+
+      let tos = utils.deepClone(transactionObjects);
+      tos[0].hbSource.type = 'auction';
+      ppi.requestBids(tos, options);
     });
   });
 });

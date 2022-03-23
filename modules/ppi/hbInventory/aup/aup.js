@@ -4,6 +4,11 @@ import { TransactionType } from './consts.js';
 import { findLimitSizes, filterSizesByIntersection, isSizeValid, sortSizes, findAUPSizes } from './sizes.js';
 import { hashFnv32a, isRegex } from './utils.js';
 
+/**
+ * This variable holds all the adUnitPatterns that are added via `pbjs.ppi.addAdUnitPatterns()`.
+ */
+export const adUnitPatterns = [];
+
 /** @type {Submodule}
  * Responsibility of this submodule is to create pbjs adUnit for each transactionObject
  * This is achieved with adUnitPatterns and regex matching between adUnitPatterns and transactionObjects
@@ -24,9 +29,12 @@ let aupsMatched = false;
 /**
  * For transaction objects match adUnitPatterns and create pbjs adUnits
  * @param {(Object[])} transactionObjects
+ * @param {Object[]} AUPs - custom ad unit patterns. If not null, those AUPs
+ * will be used. Otherwise, the ad units from addAdUnitPatterns() will be used
+ * instead.
  * @return {(Object[])} array of transactionObjects and matched adUnits
  */
-export function createAdUnits(transactionObjects) {
+export function createAdUnits(transactionObjects, AUPs) {
   aupsMatched = true;
   let matches = [];
   let allTOs = [];
@@ -40,7 +48,12 @@ export function createAdUnits(transactionObjects) {
     allTOs = allTOs.concat(transformAutoSlots(to));
   });
 
-  let toAUPPair = matchAUPs(allTOs, adUnitPatterns);
+  let adUnitPatternsToUse = adUnitPatterns;
+  if (AUPs && AUPs.length) {
+    adUnitPatternsToUse = validateAndCreateAdUnitPatterns(AUPs);
+  }
+
+  let toAUPPair = matchAUPs(allTOs, adUnitPatternsToUse);
   toAUPPair.forEach(toAUP => {
     let aup = toAUP.adUnitPattern;
     let to = toAUP.transactionObject;
@@ -351,7 +364,9 @@ export function applyFirstPartyData(adUnit, adUnitPattern, transactionObject) {
 
   let elementId = utils.deepAccess(transactionObject, 'hbDestination.values.div') || getDivId(transactionObject, adUnitPattern);
   if (elementId) {
-    utils.deepSetValue(adUnit, 'ortb2Imp.ext.data.elementid', elementId);
+    const elementIds = utils.deepAccess(adUnit, 'ortb2Imp.ext.data.elementid', []);
+    elementIds.push(elementId);
+    utils.deepSetValue(adUnit, 'ortb2Imp.ext.data.elementid', elementIds);
   }
 
   let slotName = getSlotName(transactionObject, adUnitPattern);
@@ -364,6 +379,7 @@ export function applyFirstPartyData(adUnit, adUnitPattern, transactionObject) {
     name: 'gam',
     adslot: slotName
   });
+  utils.deepSetValue(transactionObject, 'hbInventory.ortb2Imp', adUnit.ortb2Imp);
 }
 
 /**
@@ -450,8 +466,6 @@ export function setCustomMappingFunction(mappingFunction) {
   customMappingFunction = mappingFunction;
 }
 
-export const adUnitPatterns = [];
-
 /**
  * Add adUnitPatterns into pbjs.ppi.addUnitPatterns array
  * Before adding validate each transaction object and create appropriate RegExp objects
@@ -459,7 +473,18 @@ export const adUnitPatterns = [];
  * @return {{Object[]}} transactionObjects
  */
 export function addAdUnitPatterns(aups) {
-  aups.forEach(aup => {
+  const validatedAUPs = validateAndCreateAdUnitPatterns(aups);
+  adUnitPatterns.push(...validatedAUPs);
+}
+
+/**
+ * Validate ad unit patterns, and add regexes for valid patterns.
+ * @param {*} aups - Ad Unit Patterns.
+ * @returns valid Ad Unit Patterns with divPattern or slotPattern properties.
+ */
+function validateAndCreateAdUnitPatterns(aups) {
+  let validatedAUPs = [];
+  for (let aup of aups) {
     try {
       aup = JSON.parse(JSON.stringify(aup));
       aup = validateAUP(aup);
@@ -472,11 +497,12 @@ export function addAdUnitPatterns(aups) {
       if (aup.slotPattern) {
         aup.slotPatternRegex = new RegExp(aup.slotPattern, 'i');
       }
-      adUnitPatterns.push(aup);
+      validatedAUPs.push(aup);
     } catch (e) {
-      utils.logError('[PPI] Error creating Ad Unit Pattern ', e)
+      utils.logError('[PPI] Error creating Ad Unit Pattern ', e);
     }
-  });
+  }
+  return validatedAUPs;
 }
 
 (getGlobal()).ppi = (getGlobal()).ppi || {};

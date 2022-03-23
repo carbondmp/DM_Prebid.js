@@ -1,6 +1,7 @@
 import { expect } from 'chai';
 import { hbSource } from 'modules/ppi/hbSource/hbSource.js';
 import { config as configObj } from 'src/config.js';
+import prebid from '../../../src/prebid.js';
 
 describe('test ppi hbSource submodule', () => {
   let sandbox;
@@ -15,20 +16,23 @@ describe('test ppi hbSource submodule', () => {
 
   it('test sending from auction hbSource submodule', () => {
     let bidsRequested = false;
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
       bidsBackHandler();
     });
 
     let matches = [{ adUnit: { code: 'test-1' } }];
-    hbSource['auction'].requestBids(matches, () => {
-      bidsRequested = true;
+    hbSource['auction'].requestBids({
+      matchObjects: matches,
+      callback: () => {
+        bidsRequested = true;
+      }
     });
 
     expect(bidsRequested).to.equal(true);
   });
 
   it('test sending from cache hbSource with cached bids', () => {
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
       expect.fail('request bids should not be called');
     });
 
@@ -43,15 +47,18 @@ describe('test ppi hbSource submodule', () => {
       }
     };
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'getBidResponsesForAdUnitCode').callsFake((code) => {
+    sandbox.stub(prebid, 'getBidResponsesForAdUnitCode').callsFake((code) => {
       return adUnitBids[code];
     });
 
     let matches = [{ adUnit: { code: 'test-1' } }];
 
     let cacheCallbackCalled = false;
-    hbSource['cache'].requestBids(matches, () => {
-      cacheCallbackCalled = true;
+    hbSource['cache'].requestBids({
+      matchObjects: matches,
+      callback: () => {
+        cacheCallbackCalled = true;
+      }
     });
 
     expect(cacheCallbackCalled).to.equal(true);
@@ -59,15 +66,18 @@ describe('test ppi hbSource submodule', () => {
 
   it('test sending from cache hbSource without cached bids', () => {
     let bidsRequested = false;
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
       bidsRequested = true;
       bidsBackHandler();
     });
     let matches = [{ adUnit: { code: 'test-1' } }];
 
     let cacheCallbackCalled = false;
-    hbSource['cache'].requestBids(matches, () => {
-      cacheCallbackCalled = true;
+    hbSource['cache'].requestBids({
+      matchObjects: matches,
+      callback: () => {
+        cacheCallbackCalled = true;
+      }
     });
 
     expect(bidsRequested).to.equal(true);
@@ -88,19 +98,22 @@ describe('test ppi hbSource submodule', () => {
       }
     };
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
       bidsBackHandler(adUnitBids, false, '1234-56789-0000');
     });
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'getBidResponsesForAdUnitCode').callsFake((code) => {
+    sandbox.stub(prebid, 'getBidResponsesForAdUnitCode').callsFake((code) => {
       return adUnitBids[code];
     });
 
     let matches = [{ adUnit: { code: 'test-1' } }];
 
     let destMos;
-    hbSource['auction'].requestBids(matches, (mos) => {
-      destMos = mos;
+    hbSource['auction'].requestBids({
+      matchObjects: matches,
+      callback: (mos) => {
+        destMos = mos;
+      }
     });
 
     expect(destMos.length).to.equal(1);
@@ -134,7 +147,7 @@ describe('test ppi hbSource submodule', () => {
       }
     };
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
       bidsBackHandler({
         'test-1': {
           bids: [latestBid]
@@ -142,15 +155,18 @@ describe('test ppi hbSource submodule', () => {
       }, true, '1234-56789-0001');
     });
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'getBidResponsesForAdUnitCode').callsFake((code) => {
+    sandbox.stub(prebid, 'getBidResponsesForAdUnitCode').callsFake((code) => {
       return adUnitBids[code];
     });
 
     let matches = [{ adUnit: { code: 'test-1' } }];
 
     let destMos;
-    hbSource['auction'].requestBids(matches, (mos) => {
-      destMos = mos;
+    hbSource['auction'].requestBids({
+      matchObjects: matches,
+      callback: (mos) => {
+        destMos = mos;
+      }
     });
 
     expect(destMos.length).to.equal(1);
@@ -185,7 +201,7 @@ describe('test ppi hbSource submodule', () => {
       }
     };
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
       bidsBackHandler({
         'test-1': {
           bids: [latestBid]
@@ -193,15 +209,18 @@ describe('test ppi hbSource submodule', () => {
       }, true, '1234-56789-0001');
     });
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'getBidResponsesForAdUnitCode').callsFake((code) => {
+    sandbox.stub(prebid, 'getBidResponsesForAdUnitCode').callsFake((code) => {
       return adUnitBids[code];
     });
 
     let matches = [{ adUnit: { code: 'test-1' } }];
 
     let destMos;
-    hbSource['auction'].requestBids(matches, (mos) => {
-      destMos = mos;
+    hbSource['auction'].requestBids({
+      matchObjects: matches,
+      callback: (mos) => {
+        destMos = mos;
+      }
     });
 
     expect(destMos.length).to.equal(1);
@@ -214,8 +233,11 @@ describe('test ppi hbSource submodule', () => {
 
   it('should not attach values to match object when no ad unit got matched', () => {
     let destMos;
-    hbSource['cache'].requestBids([{ transcactionObject: {}, adUnit: undefined }], (mos) => {
-      destMos = mos;
+    hbSource['cache'].requestBids({
+      matchObjects: [{ transcactionObject: {}, adUnit: undefined }],
+      callback: (mos) => {
+        destMos = mos;
+      }
     });
 
     expect(destMos.length).to.equal(1);
@@ -246,7 +268,7 @@ describe('test ppi hbSource submodule', () => {
       }
     };
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ adUnits, bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ adUnits, bidsBackHandler }) => {
       if (adUnits.length != 1 || adUnits[0].code != 'test-2') {
         expect.fail('request bids should be called only for test-2 adUnit');
       }
@@ -258,7 +280,7 @@ describe('test ppi hbSource submodule', () => {
       }, true, '1234-56789-0001');
     });
 
-    sandbox.stub($$PREBID_GLOBAL$$, 'getBidResponsesForAdUnitCode').callsFake((code) => {
+    sandbox.stub(prebid, 'getBidResponsesForAdUnitCode').callsFake((code) => {
       return adUnitBids[code];
     });
 
@@ -270,9 +292,12 @@ describe('test ppi hbSource submodule', () => {
 
     let destMos = [];
     let destCalled = 0;
-    hbSource['cache'].requestBids(matches, (mos) => {
-      destCalled++;
-      destMos = destMos.concat(mos);
+    hbSource['cache'].requestBids({
+      matchObjects: matches,
+      callback: (mos) => {
+        destCalled++;
+        destMos = destMos.concat(mos);
+      }
     });
 
     expect(destCalled).to.equal(2);
