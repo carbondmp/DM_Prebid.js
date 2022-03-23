@@ -16,7 +16,7 @@ export const cacheSourceSubmodule = {
    * @param {(Object[])} matchObjects array of transactionObjects and matched adUnits
    * @param {function} callback
    */
-  requestBids(matchObjects, callback) {
+  requestBids({ matchObjects, requestBidsParameters, callback }) {
     let cachingEnabled = config.getConfig('useBidCache');
     if (!cachingEnabled) {
       utils.logWarn('[PPI] Enable bid caching (useBidCache: true) to use the cache source module!');
@@ -68,6 +68,7 @@ export const cacheSourceSubmodule = {
     if (emptyCacheMatches.length) {
       pbjs.requestBids({
         adUnits: emptyCacheMatches.filter(mo => mo.adUnit).map(mo => mo.adUnit),
+        ...requestBidsParameters,
         bidsBackHandler: (bids, timedOut, auctionId) => {
           utils.logInfo('[PPI] - bids from bidsBackHandler: ', bids);
 

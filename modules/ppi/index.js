@@ -17,9 +17,21 @@ let inventoryRegistry = hbInventory;
  * ad rendering on the page
  * new bids being cached
  * @param {(Object[])} transactionObjects
+ * @param {Object} requestOptions - an object that contains all options that
+ *  will be passed to underlying pbjs.requestBids. The special property `ppi`
+ * is used to pass configuration ad units to pbjs.ppi.requestBids.
  * @return {(Object[])} array of transactionObjects and matched adUnits
  */
-export function requestBids(transactionObjects) {
+export function requestBids(transactionObjects, requestOptions = {}) {
+  // strip out adUnitCodes, adUnits and bidsBackHandler: those are not needed in PPI.
+  const { adUnitCodes, adUnits, bidsBackHandler, ppi, ...requestBidsParameters } = requestOptions;
+
+  // if there's ppi.adUnitPatterns, use this list, otherwise use the global one.
+  let requestAdUnitPatterns = null;
+  if (ppi && ppi.adUnitPatterns) {
+    requestAdUnitPatterns = ppi.adUnitPatterns;
+  }
+
   utils.logInfo('[PPI] requestBids, transaction objects', transactionObjects);
   let validationResult = validateTransactionObjects(transactionObjects);
   let transactionResult = [];
@@ -33,11 +45,16 @@ export function requestBids(transactionObjects) {
   let groupedTransactionObjects = groupTransactionObjects(validationResult.valid);
   for (const source in groupedTransactionObjects) {
     for (const dest in groupedTransactionObjects[source]) {
-      let matchObjects = inventoryRegistry.createAdUnits(groupedTransactionObjects[source][dest]);
-      sourceRegistry[source].requestBids(matchObjects, (matches) => {
-        utils.logInfo('[PPI] calling destination module [' + dest + '] from source [' + source + ']');
-        destinationRegistry[dest].send(matches);
-      });
+      let matchObjects = inventoryRegistry.createAdUnits(groupedTransactionObjects[source][dest], requestAdUnitPatterns);
+      sourceRegistry[source]
+        .requestBids({
+          matchObjects,
+          requestBidsParameters,
+          callback: (matches) => {
+            utils.logInfo('[PPI] calling destination module [' + dest + '] from source [' + source + ']');
+            destinationRegistry[dest].send(matches);
+          }
+        });
 
       matchObjects.forEach(matchObj => {
         transactionResult.push({

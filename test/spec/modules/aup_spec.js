@@ -661,7 +661,7 @@ describe('responsive sizes', () => {
       mediaTypes: {
         banner: {
           sizes: [[300, 250], [300, 600], [160, 600]],
-          responsiveSizes: [
+          sizeConfig: [
             { sizes: [[300, 250], [100, 200]], minViewPort: [0, 0] },
             { sizes: [[160, 600], [200, 300]], minViewPort: [768, 200] },
             { sizes: [[160, 600], [300, 600]], minViewPort: [1540, 200] }
