@@ -87,13 +87,13 @@ function filterResponsiveSizes(sizeConfig, viewport) {
   try {
     // sort sizeConfig from biggest to smallest viewport
     // then find the biggest one that fits in the given viewport
-    let val = (sizeConfig.sort((a, b) => {
+    let val = sizeConfig.sort((a, b) => {
       let aVP = a.minViewPort;
       let bVP = b.minViewPort;
       return bVP[0] * bVP[1] - aVP[0] * aVP[1] || bVP[0] - aVP[0] || bVP[1] - aVP[1];
     }).find((responsiveSize) => {
       return viewport[0] >= responsiveSize.minViewPort[0] && viewport[1] >= responsiveSize.minViewPort[1];
-    }));
+    });
     sizes = val && val.sizes;
   } catch (e) {
     utils.logError('[PPI] while parsing sizeConfig:', sizeConfig, e);
