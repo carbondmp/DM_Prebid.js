@@ -1864,6 +1864,102 @@ describe('rubicon analytics adapter', function () {
         expect(message).to.deep.equal(expectedMessage);
       });
 
+      it('should send gam data if adunit has elementid ortb2 fields', function () {
+        config.setConfig({
+          rubicon: {
+            waitForGamSlots: true,
+          }
+        });
+
+        // update auction init mock to have the elementids in the adunit
+        // and change adUnitCode to be hashes
+        let auctionInit = utils.deepClone(MOCK.AUCTION_INIT);
+
+        auctionInit.adUnits = [
+          {
+            'code': '1a2b3c4d',
+            'sizes': [[640, 480]],
+            'bids': [{
+              'bidder': 'rubicon',
+              'params': {
+                'accountId': 1001, 'siteId': 113932, 'zoneId': 535512
+              }
+            }],
+            ortb2Imp: {
+              ext: {
+                data: {
+                  elementid: [gptSlot0.getSlotElementId()]
+                }
+              }
+            },
+          }, {
+            'code': '4d3c2b1a',
+            'sizes': [[640, 480]],
+            'bids': [{
+              'bidder': 'rubicon',
+              'params': {
+                'accountId': 1001, 'siteId': 113932, 'zoneId': 535512
+              }
+            }],
+            ortb2Imp: {
+              ext: {
+                data: {
+                  elementid: [gptSlot1.getSlotElementId()]
+                }
+              }
+            }
+          }
+        ];
+
+        let bidRequested = utils.deepClone(MOCK.BID_REQUESTED);
+        bidRequested.bids[0].adUnitCode = '1a2b3c4d';
+        bidRequested.bids[1].adUnitCode = '4d3c2b1a';
+
+        events.emit(AUCTION_INIT, auctionInit);
+        events.emit(BID_REQUESTED, bidRequested);
+        events.emit(BID_RESPONSE, MOCK.BID_RESPONSE[0]);
+        events.emit(BID_RESPONSE, MOCK.BID_RESPONSE[1]);
+        events.emit(BIDDER_DONE, MOCK.BIDDER_DONE);
+        events.emit(AUCTION_END, MOCK.AUCTION_END);
+
+        // update setTargeting to have new adunit codes
+
+        events.emit(SET_TARGETING, {
+          '1a2b3c4d': BID.adserverTargeting,
+          '4d3c2b1a': BID2.adserverTargeting,
+        });
+
+        // should send if just slotRenderEnded is emmitted for both
+        mockGpt.emitEvent(gptSlotRenderEnded0.eventName, gptSlotRenderEnded0.params);
+        mockGpt.emitEvent(gptSlotRenderEnded1.eventName, gptSlotRenderEnded1.params);
+
+        expect(server.requests.length).to.equal(1);
+        let request = server.requests[0];
+        let message = JSON.parse(request.requestBody);
+        validate(message);
+
+        let expectedMessage = utils.deepClone(ANALYTICS_MESSAGE);
+        delete expectedMessage.bidsWon; // should not be any of these
+        expectedMessage.auctions[0].adUnits[0].gam = {
+          advertiserId: 1111,
+          creativeId: 2222,
+          lineItemId: 3333,
+          adSlot: '/19968336/header-bid-tag-0'
+        };
+        expectedMessage.auctions[0].adUnits[1].gam = {
+          advertiserId: 4444,
+          creativeId: 5555,
+          lineItemId: 6666,
+          adSlot: '/19968336/header-bid-tag1'
+        };
+        expectedMessage.trigger = 'gam';
+
+        // new adUnitCodes in payload
+        expectedMessage.auctions[0].adUnits[0].adUnitCode = '1a2b3c4d';
+        expectedMessage.auctions[0].adUnits[1].adUnitCode = '4d3c2b1a';
+        expect(message).to.deep.equal(expectedMessage);
+      });
+
       it('should delay the event call depending on analyticsEventDelay config', function () {
         config.setConfig({
           rubicon: {
