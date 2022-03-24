@@ -1,4 +1,3 @@
-import Set from 'core-js-pure/features/set';
 import * as utils from '../../src/utils.js';
 import { getGlobal } from '../../src/prebidGlobal.js';
 import { hbSource } from './hbSource/hbSource.js';
