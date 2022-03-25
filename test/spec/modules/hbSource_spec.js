@@ -385,15 +385,19 @@ describe('test ppi amazon support', () => {
   });
 
   it('should call amazon and pbjs at the same time', () => {
+    makeSlot({ code: 'test-unit', divId: 'test-div' });
     attachApstag();
     let bidsRequested = false;
-    sandbox.stub($$PREBID_GLOBAL$$, 'requestBids').callsFake(({ bidsBackHandler }) => {
+    sandbox.stub(prebid, 'requestBids').callsFake(({ bidsBackHandler }) => {
       bidsBackHandler();
     });
 
     let matches = [{ adUnit: { code: 'test-unit' }, transactionObject: { divId: 'test-div', hbSource: { values: { amazonEnabled: true } } } }];
-    hbSource['auction'].requestBids(matches, () => {
-      bidsRequested = true;
+    hbSource['auction'].requestBids({
+      matchObjects: matches,
+      callback: () => {
+        bidsRequested = true;
+      }
     });
 
     expect(bidsRequested).to.equal(true);

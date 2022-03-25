@@ -1,4 +1,3 @@
-import Set from 'core-js-pure/features/set';
 import * as utils from '../../src/utils.js';
 import { getGlobal } from '../../src/prebidGlobal.js';
 import { hbSource } from './hbSource/hbSource.js';
@@ -97,7 +96,7 @@ export function validateTransactionObjects(transactionObjects) {
     }
 
     if (!validDestinationTypes.has(to.hbDestination.type)) {
-      to.error = `destination type ${to.hbDestination.type} not supported`
+      to.error = `destination type ${to.hbDestination.type} not supported`;
       invalid.push(to);
       return;
     }
@@ -124,7 +123,7 @@ export function validateTransactionObjects(transactionObjects) {
       let isSizeValid = (size) => {
         return (Array.isArray(size) && size.length === 2 && typeof (size[0]) === 'number' && typeof (size[1]) === 'number') ||
           size === 'fluid';
-      }
+      };
 
       to.hbInventory.sizes = to.hbInventory.sizes.filter(s => {
         if (!isSizeValid(s)) {
@@ -147,7 +146,7 @@ export function validateTransactionObjects(transactionObjects) {
   return {
     valid,
     invalid,
-  }
+  };
 }
 
 /**
