@@ -524,6 +524,58 @@ describe('add adUnitPattern', () => {
       expect(adUnit.mediaTypes.banner.sizes).to.deep.equal([[4, 4], [3, 3], [2, 2], [1, 1]]);
     });
   });
+
+  describe('apply first party data', () => {
+    let adUnitPattern, to, adUnit;
+    beforeEach(() => {
+      while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+      adUnitPattern = {
+        slotPattern: '^.*header-bid-tag-.*$',
+        divPattern: 'test-*',
+        bids: [
+          {
+            bidder: 'rubicon',
+            params: {
+              accountId: '1001',
+              siteId: '113932',
+              zoneId: '535510',
+            }
+          }
+        ],
+      };
+      to = {
+        hbInventory: {
+          type: TransactionType.SLOT,
+          values: {
+            name: '/19968336/header-bid-tag-0',
+          },
+          sizes: [[1, 1]],
+        },
+        hbSource: {
+          type: 'auction',
+        },
+        hbDestination: {
+          type: 'gpt',
+        }
+      };
+      adUnit = aup.createAdUnit(adUnitPattern, to);
+    });
+
+    afterEach(() => {
+      while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
+    });
+
+    it('should add aupName to the adunit when not there', () => {
+      aup.applyFirstPartyData(adUnit, adUnitPattern, to);
+      expect(utils.deepAccess(adUnit, 'ortb2Imp.ext.data.aupName')).to.equal('^.*header-bid-tag-.*$&test-*');
+    });
+
+    it('should use aupName on adUnit if there already', () => {
+      adUnit.aupName = 'customAupName';
+      aup.applyFirstPartyData(adUnit, adUnitPattern, to);
+      expect(utils.deepAccess(adUnit, 'ortb2Imp.ext.data.aupName')).to.equal('customAupName');
+    });
+  });
 });
 
 describe('add MTO to adUnitPattern', () => {
