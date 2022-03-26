@@ -3,6 +3,7 @@ import { getGlobal } from '../../../src/prebidGlobal.js';
 import { filters } from '../../../src/targeting.js';
 import { config } from '../../../src/config.js';
 import { auctionTracker } from './auctionTracker.js';
+import { fetchBids } from './amazonSource.js';
 
 /** @type {Submodule}
  * Responsibility of this submodule is to provide mechanism for ppi to requestBids from cache
@@ -26,6 +27,33 @@ export const cacheSourceSubmodule = {
     // store match objects that don't have any bids and trigger new HB auction
     let emptyCacheMatches = [];
     let readyMatches = [];
+
+    let auctionExecuted = false;
+    let cachedMatchesReady = false;
+    let amazonExecuted = true;
+
+    const wrappedCallback = () => {
+      if (amazonExecuted && utils.isFn(callback)) {
+        if (cachedMatchesReady && auctionExecuted) {
+          callback(emptyCacheMatches.concat(readyMatches));
+        } else if (!auctionExecuted) {
+          callback(readyMatches);
+          // empty this array so that later '.concat' won't duplicate refreshes for some slots
+          readyMatches = [];
+        }
+      }
+    }
+
+    let matchesWithAmazon = matchObjects.filter(matchObject => utils.deepAccess(matchObject.transactionObject, 'hbSource.values.amazonEnabled'));
+    if (matchesWithAmazon.length) {
+      utils.logWarn(`[PPI] Amazon is enabled for some transaction objects. Fetching amazon bids before refreshing actual slots`);
+      amazonExecuted = false;
+      fetchBids(matchesWithAmazon, () => {
+        amazonExecuted = true;
+        wrappedCallback();
+      });
+    }
+
     let pbjs = getGlobal();
     matchObjects.forEach(matchObj => {
       // no point in holding new HB auction if transaction object didn't create any adUnit
@@ -59,8 +87,9 @@ export const cacheSourceSubmodule = {
       readyMatches.push(matchObj);
     });
 
-    if (readyMatches.length && utils.isFn(callback)) {
-      callback(readyMatches);
+    cachedMatchesReady = true;
+    if (readyMatches.length) {
+      wrappedCallback();
     }
 
     // adunits with empty cache need to be re-auctioned
@@ -83,9 +112,8 @@ export const cacheSourceSubmodule = {
             };
           });
 
-          if (utils.isFn(callback)) {
-            callback(emptyCacheMatches);
-          }
+          auctionExecuted = true;
+          wrappedCallback();
         }
       });
     }

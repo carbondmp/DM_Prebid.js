@@ -96,7 +96,7 @@ export function validateTransactionObjects(transactionObjects) {
     }
 
     if (!validDestinationTypes.has(to.hbDestination.type)) {
-      to.error = `destination type ${to.hbDestination.type} not supported`
+      to.error = `destination type ${to.hbDestination.type} not supported`;
       invalid.push(to);
       return;
     }
@@ -123,7 +123,7 @@ export function validateTransactionObjects(transactionObjects) {
       let isSizeValid = (size) => {
         return (Array.isArray(size) && size.length === 2 && typeof (size[0]) === 'number' && typeof (size[1]) === 'number') ||
           size === 'fluid';
-      }
+      };
 
       to.hbInventory.sizes = to.hbInventory.sizes.filter(s => {
         if (!isSizeValid(s)) {
@@ -135,13 +135,18 @@ export function validateTransactionObjects(transactionObjects) {
       });
     }
 
+    if (to.hbSource.values && to.hbSource.values.amazonEnabled && to.hbDestination.type !== 'gpt') {
+      utils.logWarn(`[PPI] Amazon bids are enabled only for 'gpt' destination. Disabling amazon for transaction object: `, to);
+      to.hbSource.values.amazonEnabled = false;
+    }
+
     valid.push(to);
   });
 
   return {
     valid,
     invalid,
-  }
+  };
 }
 
 /**

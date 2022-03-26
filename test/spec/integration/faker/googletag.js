@@ -37,6 +37,9 @@ var Slot = function Slot({ code, divId }) {
 
     clearTargeting: function clearTargeting() {
       return window.googletag.pubads().getSlots();
+    },
+    updateTargetingFromMap: function updateTargetingFromMap(targetingMap) {
+      Object.keys(targetingMap).forEach(key => this.setTargeting(key, targetingMap[key]));
     }
   };
   slot.spySetTargeting = sinon.spy(slot, 'setTargeting');
@@ -50,7 +53,7 @@ export function makeSlot() {
 }
 
 export function emitEvent(eventName, params) {
-  (window.googletag._callbackMap[eventName] || []).forEach(eventCb => eventCb({...params, eventName}));
+  (window.googletag._callbackMap[eventName] || []).forEach(eventCb => eventCb({ ...params, eventName }));
 }
 
 export function enable() {
@@ -74,19 +77,19 @@ export function enable() {
           self._slots = slots;
         },
 
-        setTargeting: function(key, arrayOfValues) {
+        setTargeting: function (key, arrayOfValues) {
           self._targeting[key] = Array.isArray(arrayOfValues) ? arrayOfValues : [arrayOfValues];
         },
 
-        getTargeting: function(key) {
+        getTargeting: function (key) {
           return self._targeting[key] || [];
         },
 
-        getTargetingKeys: function() {
+        getTargetingKeys: function () {
           return Object.getOwnPropertyNames(self._targeting);
         },
 
-        clearTargeting: function() {
+        clearTargeting: function () {
           self._targeting = {};
         },
 

@@ -30,7 +30,7 @@ export function findLimitSizes(transactionObject) {
   if (transactionObject.hbInventory.type === TransactionType.SLOT_OBJECT) {
     let gptSizes = getGptSlotSizes(transactionObject.hbInventory.values.slot);
     if (!toSizes || !toSizes.length) {
-      return gptSizes
+      return gptSizes;
     }
 
     utils.logWarn(`slot defined with sizes: ${gptSizes}. Using sizes override: ${toSizes}`);

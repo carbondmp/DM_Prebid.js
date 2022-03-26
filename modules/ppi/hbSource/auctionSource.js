@@ -3,6 +3,7 @@ import { getGlobal } from '../../../src/prebidGlobal.js';
 import { filters } from '../../../src/targeting.js';
 import { config } from '../../../src/config.js';
 import { auctionTracker } from './auctionTracker.js';
+import { fetchBids } from './amazonSource.js';
 
 /** @type {Submodule}
  * Responsibility of this submodule is to provide mechanism for ppi to requestBids from new HB auction
@@ -18,6 +19,23 @@ export const auctionSourceSubmodule = {
    */
   requestBids({ matchObjects, requestBidsParameters, callback }) {
     utils.logInfo('[PPI] Triggering new HB auction');
+    let pbjsExecuted = false;
+    let amazonExecuted = true;
+
+    const wrappedCallback = () => {
+      if (pbjsExecuted && amazonExecuted && utils.isFn(callback)) {
+        callback(matchObjects);
+      }
+    }
+
+    let matchesWithAmazon = matchObjects.filter(matchObject => utils.deepAccess(matchObject.transactionObject, 'hbSource.values.amazonEnabled'));
+    if (matchesWithAmazon.length) {
+      amazonExecuted = false;
+      fetchBids(matchesWithAmazon, () => {
+        amazonExecuted = true;
+        wrappedCallback();
+      });
+    }
 
     let pbjs = getGlobal();
     pbjs.requestBids({
@@ -49,9 +67,8 @@ export const auctionSourceSubmodule = {
           };
         });
 
-        if (utils.isFn(callback)) {
-          callback(matchObjects);
-        }
+        pbjsExecuted = true;
+        wrappedCallback();
       }
     });
   },

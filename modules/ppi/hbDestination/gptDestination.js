@@ -1,5 +1,6 @@
 import { getGlobal } from '../../../src/prebidGlobal.js';
 import * as utils from '../../../src/utils.js';
+import { setTargeting as setAmazonTargeting } from '../../ppi/hbSource/amazonSource.js';
 
 window.googletag = window.googletag || {};
 window.googletag.cmd = window.googletag.cmd || [];
@@ -27,6 +28,7 @@ export const gptDestinationSubmodule = {
       let gptSlotsToRefresh = [];
       let adUnitCodes = [];
       let mappings = {};
+      let hasAmazonEnabled = false;
       matchObjects.forEach(matchObj => {
         matchObj.transactionObject.hbDestination.values = matchObj.transactionObject.hbDestination.values || {};
         let divId = matchObj.transactionObject.hbDestination.values.div || matchObj.transactionObject.divId;
@@ -72,8 +74,12 @@ export const gptDestinationSubmodule = {
         adUnitCodes.push(code);
 
         mappings[code] = divId;
+        hasAmazonEnabled = hasAmazonEnabled || utils.deepAccess(matchObj.transactionObject, 'hbSource.values.amazonEnabled');
       });
       setTargeting(adUnitCodes, mappings);
+      if (hasAmazonEnabled) {
+        setAmazonTargeting();
+      }
       window.googletag.pubads().refresh(gptSlotsToRefresh);
     });
   },
@@ -104,12 +110,12 @@ function validateExistingSlot(gptSlot, adUnitPath, adUnitSizes, divId) {
   adUnitSizes = adUnitSizes.map(size => `${size[0]}x${size[1]}`);
 
   let hasDifference = (listA, listB) => {
-    let diff = new Set(listA)
+    let diff = new Set(listA);
     for (let elem of listB) {
-      diff.delete(elem)
+      diff.delete(elem);
     }
     return diff.size;
-  }
+  };
 
   if (hasDifference(gptSlotSizes, adUnitSizes) || hasDifference(adUnitSizes, gptSlotSizes)) {
     utils.logWarn(`[PPI] target div '${divId}' contains slot that has different sizes than pbjs Ad Unit. Slot sizes: [${gptSlotSizes}], pbjs Ad Unit sizes: [${adUnitSizes}]. Check your pbjs Ad Unit configuration and gpt slot definition.`);
@@ -136,7 +142,7 @@ function setTargeting(adUnitCodes, mappings) {
     let id = slot.getSlotElementId();
     return (adUnitCode) => {
       return mappings[adUnitCode] === id;
-    }
+    };
   });
 }
 
