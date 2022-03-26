@@ -21,12 +21,6 @@ var Slot = function Slot({ code, divId }) {
       this.targeting.push(obj);
     },
 
-    updateTargetingFromMap: function setTargeting(obj) {
-      Object.keys(obj).forEach(key => {
-        this.setTargeting(key, obj[key])
-      });
-    },
-
     getTargeting: function getTargeting() {
       return this.targeting;
     },
@@ -38,6 +32,7 @@ var Slot = function Slot({ code, divId }) {
     clearTargeting: function clearTargeting() {
       return window.googletag.pubads().getSlots();
     },
+
     updateTargetingFromMap: function updateTargetingFromMap(targetingMap) {
       Object.keys(targetingMap).forEach(key => this.setTargeting(key, targetingMap[key]));
     }
