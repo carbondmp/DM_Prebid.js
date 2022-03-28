@@ -135,6 +135,7 @@ export function createAdUnit(adUnitPattern, transactionObject) {
     delete adUnit.divPattern;
     delete adUnit.slotPatternRegex;
     delete adUnit.divPatternRegex;
+    delete adUnit.aupName;
   } catch (e) {
     utils.logError('[PPI] error parsing adUnit', e);
   }
@@ -380,6 +381,13 @@ export function applyFirstPartyData(adUnit, adUnitPattern, transactionObject) {
     adslot: slotName
   });
   utils.deepSetValue(transactionObject, 'hbInventory.ortb2Imp', adUnit.ortb2Imp);
+
+  // set aupName, create if not exist yet
+  if (!adUnit.aupName) {
+    const custParams = Object.entries(adUnitPattern.customMappingParams || {}).map(([key, val]) => `${key}=${val}`).join(',');
+    adUnit.aupName = [adUnitPattern.slotPattern, adUnitPattern.divPattern, custParams].filter(val => val).join('&');
+  }
+  utils.deepSetValue(adUnit, 'ortb2Imp.ext.data.aupName', adUnit.aupName);
 }
 
 /**
