@@ -7,7 +7,8 @@ import { TransactionType } from './consts.js';
  * @return {(Object[])} array of sizes formatted [[w,h],...]
  */
 export function findAUPSizes(aup) {
-  let respSizes = utils.deepAccess(aup, 'mediaTypes.banner.sizeConfig');
+  // temporary check responsivESizes
+  let respSizes = utils.deepAccess(aup, 'mediaTypes.banner.sizeConfig') || utils.deepAccess(aup, 'mediaTypes.banner.responsiveSizes');
   if (respSizes && respSizes.length) {
     return filterResponsiveSizes(respSizes, getViewport());
   }
