@@ -209,7 +209,6 @@ describe('add adUnitPattern', () => {
 describe('add adUnitPattern', () => {
   let adUnitPatterns = [
     {
-      slotPattern: '^.*header-bid-tag-.*$',
       divPattern: 'test-*',
       code: 'pattern-1',
       bids: [
@@ -250,7 +249,8 @@ describe('add adUnitPattern', () => {
     },
     {
       slotPattern: '',
-      divPattern: 'test-*',
+      divPattern: 'special-*',
+      code: 'pattern-3',
       bids: [
         {
           bidder: 'rubicon',
@@ -334,15 +334,19 @@ describe('add adUnitPattern', () => {
     for (let i = 0; i < result.length; i++) {
       expect(tos[i]).to.equal(result[i].transactionObject);
     }
-    for (let i = 0; i < result.length - 1; i++) {
-      expect(tos[i].hbSource).to.equal(result[i].transactionObject.hbSource);
-      expect(tos[i].hbDestination).to.deep.equal(result[i].transactionObject.hbDestination);
-    }
-    expect(result[2].adUnitPattern).to.be.a('undefined');
+
+    expect(tos[0].hbSource).to.deep.equal(result[0].transactionObject.hbSource);
+    expect(tos[0].hbDestination).to.deep.equal(result[0].transactionObject.hbDestination);
+    expect(result[0].adUnitPattern.code).to.deep.equal('pattern-1');
+    expect(tos[1].hbSource).to.deep.equal(result[1].transactionObject.hbSource);
+    expect(tos[1].hbDestination).to.deep.equal(result[1].transactionObject.hbDestination);
+    expect(result[1].adUnitPattern.code).to.deep.equal('pattern-2');
+    expect(tos[2].hbSource).to.equal(result[2].transactionObject.hbSource);
+    expect(tos[2].hbDestination).to.deep.equal(result[2].transactionObject.hbDestination);
+    expect(result[2].adUnitPattern.code).to.deep.equal('pattern-2');
   });
 
   it('should match gpt slot', () => {
-    while (aup.adUnitPatterns.length) aup.adUnitPatterns.pop();
     window.googletag.pubads().setSlots([]);
 
     let gptSlotSizes = [[1, 1], [2, 2]];
@@ -398,7 +402,7 @@ describe('add adUnitPattern', () => {
     window.googletag.pubads().setSlots([]);
 
     let gptSlotSizes = [[1, 1], [2, 2]];
-    let gptSlot = makeGPTSlot('/19968336/header-bid-tag-1', 'test-3', gptSlotSizes);
+    let gptSlot = makeGPTSlot('/19968336/header-bid-tag-1', 'special-1', gptSlotSizes);
 
     let sizesOverride = [[3, 3], [2, 2], [1, 1]];
 
@@ -458,7 +462,7 @@ describe('add adUnitPattern', () => {
     expect(result.length).to.equal(tos.length);
     expect(result[0].adUnit.code).to.equal('pattern-1');
     expect(result[1].adUnit.code).to.equal('pattern-2');
-    expect(result[2].adUnit.code).to.be.a('string');
+    expect(result[2].adUnit.code).to.equal('pattern-3');
     expect(result[0].adUnit.mediaTypes.banner.sizes).to.deep.equal(sizesOverride);
     expect(result[1].adUnit.mediaTypes.banner.sizes).to.deep.equal(sizesOverride);
     expect(result[2].adUnit.mediaTypes.banner.sizes).to.deep.equal([[3, 3], [1, 1]]);
