@@ -153,15 +153,8 @@ export function createAdUnit(adUnitPattern, transactionObject) {
  */
 export function matchAUPs(transactionObjects, adUnitPatterns) {
   let matches = [];
-  let lock = new Set();
   transactionObjects.forEach(to => {
-    let aups = findMatchingAUPs(to, adUnitPatterns).filter(a => {
-      let isLocked = lock.has(a);
-      if (isLocked) {
-        utils.logWarn('[PPI] aup was already matched for one of the previous transaction object, will skip it. AUP: ', a);
-      }
-      return !isLocked;
-    });
+    let aups = findMatchingAUPs(to, adUnitPatterns);
 
     let aup;
     switch (aups.length) {
@@ -171,12 +164,10 @@ export function matchAUPs(transactionObjects, adUnitPatterns) {
       case 1:
         aup = aups[0];
         utils.logInfo('[PPI] Transaction object', to, 'matched AUP', aup);
-        lock.add(aup);
         break;
       default:
         utils.logWarn('[PPI] More than one AUP matched, for transaction object', to, 'Taking the first one', aups);
         aup = aups[0];
-        lock.add(aup);
         break;
     }
 
