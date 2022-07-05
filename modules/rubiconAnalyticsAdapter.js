@@ -8,7 +8,7 @@ import { getGlobal } from '../src/prebidGlobal.js';
 import { getStorageManager } from '../src/storageManager.js';
 
 const RUBICON_GVL_ID = 52;
-export const storage = getStorageManager({gvlid: RUBICON_GVL_ID, moduleName: 'rubicon'});
+export const storage = getStorageManager({ gvlid: RUBICON_GVL_ID, moduleName: 'rubicon' });
 const COOKIE_NAME = 'rpaSession';
 const LAST_SEEN_EXPIRE_TIME = 1800000; // 30 mins
 const END_EXPIRE_TIME = 21600000; // 6 hours
@@ -57,7 +57,8 @@ const cache = {
   targeting: {},
   timeouts: {},
   gpt: {},
-  billing: {}
+  billing: {},
+  elementIdMap: {}
 };
 
 const BID_REJECTED_IPF = 'rejected-ipf';
@@ -232,6 +233,7 @@ function sendMessage(auctionId, bidWonId, trigger) {
           'adserverTargeting', () => !isEmpty(cache.targeting[bid.adUnit.adUnitCode]) ? stringProperties(cache.targeting[bid.adUnit.adUnitCode]) : undefined,
           'gam', gam => !isEmpty(gam) ? gam : undefined,
           'pbAdSlot',
+          'gpid',
           'pattern'
         ]);
         adUnit.bids = [];
@@ -545,15 +547,22 @@ function subscribeToGamSlots() {
   window.googletag.pubads().addEventListener('slotRenderEnded', event => {
     const isMatchingAdSlot = isAdUnitCodeMatchingSlot(event.slot);
     // loop through auctions and adUnits and mark the info
-    Object.keys(cache.auctions).forEach(auctionId => {
+    // only mark first auction which finds a match
+    let hasMatch = false;
+    Object.keys(cache.auctions).find(auctionId => {
+      // if this auction data already sent, just skip it
+      if (cache.auctions[auctionId].sent) return false;
       (Object.keys(cache.auctions[auctionId].bids) || []).forEach(bidId => {
         let bid = cache.auctions[auctionId].bids[bidId];
         // if this slot matches this bids adUnit, add the adUnit info
         // if the code is present in the elementIdMap then we use the matched id as code here
-        const elementIds = cache.auctions[auctionId].elementIdMap[bid.adUnit.adUnitCode] || [bid.adUnit.adUnitCode];
-        if (elementIds.some(isMatchingAdSlot)) {
+        const elementIds = cache.elementIdMap[bid.adUnit.adUnitCode] || [bid.adUnit.adUnitCode];
+        if (!bid.adUnit.gamRendered && elementIds.some(isMatchingAdSlot)) {
           // mark this adUnit as having been rendered by gam
           cache.auctions[auctionId].gamHasRendered[bid.adUnit.adUnitCode] = true;
+
+          // this current auction has an adunit that matched the slot, so mark it as matched so next auciton is skipped
+          hasMatch = true;
 
           bid.adUnit.gam = pick(event, [
             // these come in as `null` from Gpt, which when stringified does not get removed
@@ -564,6 +573,9 @@ function subscribeToGamSlots() {
             'adSlot', () => event.slot.getAdUnitPath(),
             'isSlotEmpty', () => event.isEmpty || undefined
           ]);
+
+          // this lets us know next iteration not to check this bids adunit
+          bid.adUnit.gamRendered = true;
         }
       });
       // Now if all adUnits have gam rendered, send the payload
@@ -576,6 +588,7 @@ function subscribeToGamSlots() {
           sendMessage.call(rubiconAdapter, auctionId, undefined, 'gam')
         }
       }
+      return hasMatch;
     });
   });
 }
@@ -679,14 +692,19 @@ let rubiconAdapter = Object.assign({}, baseAdapter, {
           return { provider: id, hasId: true }
         });
         // check if we need to save a map of adUnitCode to elementId
-        cacheEntry.elementIdMap = args.adUnits.reduce((accum, adUnit) => {
+        args.adUnits.forEach(adUnit => {
           const elementIds = deepAccess(adUnit, 'ortb2Imp.ext.data.elementid');
           if (elementIds) {
+            cache.elementIdMap[adUnit.code] = cache.elementIdMap[adUnit.code] || [];
             // set it to array if set to string to be careful (should be array of strings)
-            accum[adUnit.code] = typeof elementIds === 'string' ? [elementIds] : elementIds;
+            const newIds = typeof elementIds === 'string' ? [elementIds] : elementIds;
+            newIds.forEach(id => {
+              if (!cache.elementIdMap[adUnit.code].includes(id)) {
+                cache.elementIdMap[adUnit.code].push(id);
+              }
+            });
           }
-          return accum;
-        }, {});
+        });
         cache.auctions[args.auctionId] = cacheEntry;
         // register to listen to gpt events if not done yet
         if (!cache.gpt.registered && isGptPubadsDefined()) {
@@ -781,7 +799,8 @@ let rubiconAdapter = Object.assign({}, baseAdapter, {
                 }
               },
               'pbAdSlot', () => deepAccess(bid, 'ortb2Imp.ext.data.pbadslot'),
-              'pattern', () => deepAccess(bid, 'ortb2Imp.ext.data.aupname')
+              'pattern', () => deepAccess(bid, 'ortb2Imp.ext.data.aupname'),
+              'gpid', () => deepAccess(bid, 'ortb2Imp.ext.gpid')
             ])
           ]);
           return memo;

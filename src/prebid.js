@@ -20,12 +20,11 @@ import { executeRenderer, isRendererRequired } from './Renderer.js';
 import { createBid } from './bidfactory.js';
 import { storageCallbacks } from './storageManager.js';
 import { emitAdRenderSucceeded, emitAdRenderFail } from './adRendering.js';
-import { gdprDataHandler, uspDataHandler } from './adapterManager.js'
+import {gdprDataHandler, getS2SBidderSet, uspDataHandler, default as adapterManager} from './adapterManager.js';
+import CONSTANTS from './constants.json';
+import * as events from './events.js'
 
 const $$PREBID_GLOBAL$$ = getGlobal();
-const CONSTANTS = require('./constants.json');
-const adapterManager = require('./adapterManager.js').default;
-const events = require('./events.js');
 const { triggerUserSyncs } = userSync;
 
 /* private variables */
@@ -159,7 +158,34 @@ function validateAdUnitPos(adUnit, mediaType) {
   return adUnit
 }
 
+function validateAdUnit(adUnit) {
+  const msg = (msg) => `adUnit.code '${adUnit.code}' ${msg}`;
+
+  const mediaTypes = adUnit.mediaTypes;
+  const bids = adUnit.bids;
+
+  if (bids != null && !isArray(bids)) {
+    logError(msg(`defines 'adUnit.bids' that is not an array. Removing adUnit from auction`));
+    return null;
+  }
+  if (bids == null && adUnit.ortb2Imp == null) {
+    logError(msg(`has no 'adUnit.bids' and no 'adUnit.ortb2Imp'. Removing adUnit from auction`));
+    return null;
+  }
+  if (!mediaTypes || Object.keys(mediaTypes).length === 0) {
+    logError(msg(`does not define a 'mediaTypes' object.  This is a required field for the auction, so this adUnit has been removed.`));
+    return null;
+  }
+  if (adUnit.ortb2Imp != null && (bids == null || bids.length === 0)) {
+    adUnit.bids = [{bidder: null}]; // the 'null' bidder is treated as an s2s-only placeholder by adapterManager
+    logMessage(msg(`defines 'adUnit.ortb2Imp' with no 'adUnit.bids'; it will be seen only by S2S adapters`));
+  }
+
+  return adUnit;
+}
+
 export const adUnitSetupChecks = {
+  validateAdUnit,
   validateBannerMediaType,
   validateVideoMediaType,
   validateNativeMediaType,
@@ -170,19 +196,11 @@ export const checkAdUnitSetup = hook('sync', function (adUnits) {
   const validatedAdUnits = [];
 
   adUnits.forEach(adUnit => {
+    adUnit = validateAdUnit(adUnit);
+    if (adUnit == null) return;
+
     const mediaTypes = adUnit.mediaTypes;
-    const bids = adUnit.bids;
     let validatedBanner, validatedVideo, validatedNative;
-
-    if (!bids || !isArray(bids)) {
-      logError(`Detected adUnit.code '${adUnit.code}' did not have 'adUnit.bids' defined or 'adUnit.bids' is not an array. Removing adUnit from auction.`);
-      return;
-    }
-
-    if (!mediaTypes || Object.keys(mediaTypes).length === 0) {
-      logError(`Detected adUnit.code '${adUnit.code}' did not have a 'mediaTypes' object defined.  This is a required field for the auction, so this adUnit has been removed.`);
-      return;
-    }
 
     if (mediaTypes.banner) {
       validatedBanner = validateBannerMediaType(adUnit);
@@ -467,7 +485,7 @@ $$PREBID_GLOBAL$$.renderAd = hook('async', function (doc, id, options) {
           insertElement(creativeComment, doc, 'html');
 
           if (isRendererRequired(renderer)) {
-            executeRenderer(renderer, bid);
+            executeRenderer(renderer, bid, doc);
             reinjectNodeIfRemoved(creativeComment, doc, 'html');
             emitAdRenderSucceeded({ doc, bid, id });
           } else if ((doc === document && !inIframe()) || mediaType === 'video') {
@@ -559,17 +577,7 @@ $$PREBID_GLOBAL$$.requestBids = hook('async', function ({ bidsBackHandler, timeo
 
   logInfo('Invoking $$PREBID_GLOBAL$$.requestBids', arguments);
 
-  let _s2sConfigs = [];
-  const s2sBidders = [];
-  config.getConfig('s2sConfig', config => {
-    if (config && config.s2sConfig) {
-      _s2sConfigs = Array.isArray(config.s2sConfig) ? config.s2sConfig : [config.s2sConfig];
-    }
-  });
-
-  _s2sConfigs.forEach(s2sConfig => {
-    s2sBidders.push(...s2sConfig.bidders);
-  });
+  const s2sBidders = getS2SBidderSet(config.getConfig('s2sConfig') || []);
 
   adUnits = checkAdUnitSetup(adUnits);
 
@@ -595,7 +603,7 @@ $$PREBID_GLOBAL$$.requestBids = hook('async', function ({ bidsBackHandler, timeo
     const allBidders = adUnit.bids.map(bid => bid.bidder);
     const bidderRegistry = adapterManager.bidderRegistry;
 
-    const bidders = (s2sBidders) ? allBidders.filter(bidder => !includes(s2sBidders, bidder)) : allBidders;
+    const bidders = allBidders.filter(bidder => !s2sBidders.has(bidder));
 
     adUnit.transactionId = generateUUID();
 
