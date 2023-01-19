@@ -653,6 +653,25 @@ magniteAdapter.onDataDeletionRequest = function () {
   }
 };
 
+// send a beacon to see how many times this happens
+window.addEventListener("beforeunload", function () {
+  const pendingAuctions = Object.keys(cache.auctions).length;
+  const pendingEvents = Object.keys(cache.pendingEvents).length && Object.keys(cache.pendingEvents).reduce((accum, eventName) => {
+    accum[eventName] = cache.pendingEvents[eventName].length;
+    return accum;
+  }, {});
+
+  if (pendingAuctions || pendingEvents) {
+    const payload = {
+      auctions: pendingAuctions,
+      ...pendingEvents,
+      ...getTopLevelDetails(),
+      trigger: 'unload'
+    }
+    navigator.sendBeacon(endpoint, JSON.stringify(payload));
+  }
+});
+
 magniteAdapter.MODULE_INITIALIZED_TIME = Date.now();
 magniteAdapter.referrerHostname = '';
 
