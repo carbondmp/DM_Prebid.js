@@ -19,19 +19,19 @@ import {
   logInfo,
   logWarn,
   mergeDeep,
-  parseUrl
 } from '../src/utils.js';
 import {config} from '../src/config.js';
 import {registerBidder} from '../src/adapters/bidderFactory.js';
 import {loadExternalScript} from '../src/adloader.js';
 import {verify} from 'criteo-direct-rsa-validate/build/verify.js';
 import {getStorageManager} from '../src/storageManager.js';
-import {getRefererInfo} from '../src/refererDetection.js';
+import {getRefererInfo, parseDomain} from '../src/refererDetection.js';
 import {createEidsArray} from './userId/eids.js';
 import {BANNER, NATIVE, VIDEO} from '../src/mediaTypes.js';
 import {Renderer} from '../src/Renderer.js';
 import {OUTSTREAM} from '../src/video.js';
 import { getGlobal } from '../src/prebidGlobal.js';
+import { convertOrtbRequestToProprietaryNative } from '../src/native.js';
 
 const BIDDER_CODE = 'adagio';
 const LOG_PREFIX = 'Adagio:';
@@ -59,7 +59,7 @@ export const ORTB_VIDEO_PARAMS = {
   'w': (value) => isInteger(value),
   'h': (value) => isInteger(value),
   'startdelay': (value) => isInteger(value),
-  'placement': (value) => Array.isArray(value) && value.every(v => [1, 2, 3, 4, 5].indexOf(v) !== -1),
+  'placement': (value) => [1, 2, 3, 4, 5].indexOf(value) !== -1,
   'linearity': (value) => [1, 2].indexOf(value) !== -1,
   'skip': (value) => [0, 1].indexOf(value) !== -1,
   'skipmin': (value) => isInteger(value),
@@ -270,12 +270,10 @@ function getDevice() {
 
 function getSite(bidderRequest) {
   const { refererInfo } = bidderRequest;
-  const url = parseUrl(refererInfo.referer);
-
   return {
-    domain: url.hostname || '',
-    page: refererInfo.referer || '',
-    referrer: canAccessTopWindow() ? getWindowTop().document.referrer || '' : getWindowSelf().document.referrer || '',
+    domain: parseDomain(refererInfo.topmostLocation) || '',
+    page: refererInfo.topmostLocation || '',
+    referrer: refererInfo.ref || getWindowSelf().document.referrer || '',
     top: refererInfo.reachedTop
   };
 };
@@ -534,7 +532,12 @@ function _parseNativeBidResponse(bid) {
           native.impressionTrackers.push(tracker.url);
           break;
         case 2:
-          native.javascriptTrackers = `<script src=\"${tracker.url}\"></script>`;
+          const script = `<script async src=\"${tracker.url}\"></script>`;
+          if (!native.javascriptTrackers) {
+            native.javascriptTrackers = script;
+          } else {
+            native.javascriptTrackers += `\n${script}`;
+          }
           break;
       }
     });
@@ -621,11 +624,20 @@ export function setExtraParam(bid, paramName) {
   }
 
   const adgGlobalConf = config.getConfig('adagio') || {};
-  const ortb2Conf = config.getConfig('ortb2');
+  const ortb2Conf = bid.ortb2;
 
   const detected = adgGlobalConf[paramName] || deepAccess(ortb2Conf, `site.ext.data.${paramName}`, null);
   if (detected) {
-    bid.params[paramName] = detected;
+    // First Party Data can be an array.
+    // As we consider that params detected from FPD are fallbacks, we just keep the 1st value.
+    if (Array.isArray(detected)) {
+      if (detected.length) {
+        bid.params[paramName] = detected[0].toString();
+      }
+      return;
+    }
+
+    bid.params[paramName] = detected.toString();
   }
 }
 
@@ -749,45 +761,51 @@ function getSlotPosition(adUnitElementId) {
     position.x = Math.round(sfGeom.t);
     position.y = Math.round(sfGeom.l);
   } else if (canAccessTopWindow()) {
-    // window.top based computing
-    const wt = getWindowTop();
-    const d = wt.document;
+    try {
+      // window.top based computing
+      const wt = getWindowTop();
+      const d = wt.document;
 
-    let domElement;
+      let domElement;
 
-    if (inIframe() === true) {
-      const ws = getWindowSelf();
-      const currentElement = ws.document.getElementById(adUnitElementId);
-      domElement = internal.getElementFromTopWindow(currentElement, ws);
-    } else {
-      domElement = wt.document.getElementById(adUnitElementId);
-    }
+      if (inIframe() === true) {
+        const ws = getWindowSelf();
+        const currentElement = ws.document.getElementById(adUnitElementId);
+        domElement = internal.getElementFromTopWindow(currentElement, ws);
+      } else {
+        domElement = wt.document.getElementById(adUnitElementId);
+      }
 
-    if (!domElement) {
+      if (!domElement) {
+        return '';
+      }
+
+      let box = domElement.getBoundingClientRect();
+
+      const docEl = d.documentElement;
+      const body = d.body;
+      const clientTop = d.clientTop || body.clientTop || 0;
+      const clientLeft = d.clientLeft || body.clientLeft || 0;
+      const scrollTop = wt.pageYOffset || docEl.scrollTop || body.scrollTop;
+      const scrollLeft = wt.pageXOffset || docEl.scrollLeft || body.scrollLeft;
+
+      const elComputedStyle = wt.getComputedStyle(domElement, null);
+      const elComputedDisplay = elComputedStyle.display || 'block';
+      const mustDisplayElement = elComputedDisplay === 'none';
+
+      if (mustDisplayElement) {
+        domElement.style = domElement.style || {};
+        const originalDisplay = domElement.style.display;
+        domElement.style.display = 'block';
+        box = domElement.getBoundingClientRect();
+        domElement.style.display = originalDisplay || null;
+      }
+      position.x = Math.round(box.left + scrollLeft - clientLeft);
+      position.y = Math.round(box.top + scrollTop - clientTop);
+    } catch (err) {
+      logError(LOG_PREFIX, err);
       return '';
     }
-
-    let box = domElement.getBoundingClientRect();
-
-    const docEl = d.documentElement;
-    const body = d.body;
-    const clientTop = d.clientTop || body.clientTop || 0;
-    const clientLeft = d.clientLeft || body.clientLeft || 0;
-    const scrollTop = wt.pageYOffset || docEl.scrollTop || body.scrollTop;
-    const scrollLeft = wt.pageXOffset || docEl.scrollLeft || body.scrollLeft;
-
-    const elComputedStyle = wt.getComputedStyle(domElement, null);
-    const elComputedDisplay = elComputedStyle.display || 'block';
-    const mustDisplayElement = elComputedDisplay === 'none';
-
-    if (mustDisplayElement) {
-      domElement.style = domElement.style || {};
-      domElement.style.display = 'block';
-      box = domElement.getBoundingClientRect();
-      domElement.style.display = elComputedDisplay;
-    }
-    position.x = Math.round(box.left + scrollLeft - clientLeft);
-    position.y = Math.round(box.top + scrollTop - clientTop);
   } else {
     return '';
   }
@@ -884,6 +902,9 @@ export const spec = {
   },
 
   buildRequests(validBidRequests, bidderRequest) {
+    // convert Native ORTB definition to old-style prebid native definition
+    validBidRequests = convertOrtbRequestToProprietaryNative(validBidRequests);
+
     const secure = (location.protocol === 'https:') ? 1 : 0;
     const device = internal.getDevice();
     const site = internal.getSite(bidderRequest);
@@ -978,6 +999,8 @@ export const spec = {
       // remove useless props
       delete adUnitCopy.floorData;
       delete adUnitCopy.params.siteId;
+      delete adUnitCopy.userId
+      delete adUnitCopy.userIdAsEids
 
       groupedAdUnits[adUnitCopy.params.organizationId] = groupedAdUnits[adUnitCopy.params.organizationId] || [];
       groupedAdUnits[adUnitCopy.params.organizationId].push(adUnitCopy);
@@ -1120,7 +1143,7 @@ export const spec = {
         ...globalFeatures,
         print_number: getPrintNumber(adagioBid.adUnitCode, adagioBidderRequest).toString(),
         adunit_position: getSlotPosition(adagioBid.params.adUnitElementId) // adUnitElementId à déplacer ???
-      }
+      };
 
       adagioBid.params.pageviewId = internal.getPageviewId();
       adagioBid.params.prebidVersion = '$prebid.version$';
