@@ -655,7 +655,7 @@ magniteAdapter.onDataDeletionRequest = function () {
 
 // send a beacon to see how many times this happens
 window.addEventListener("beforeunload", function () {
-  const pendingAuctions = Object.keys(cache.auctions).length;
+  const pendingAuctions = Object.keys(cache.auctions).filter(aid => !cache.auctions[aid].sent).length;
   const pendingEvents = Object.keys(cache.pendingEvents).length && Object.keys(cache.pendingEvents).reduce((accum, eventName) => {
     accum[eventName] = cache.pendingEvents[eventName].length;
     return accum;
