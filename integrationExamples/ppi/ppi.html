@@ -64,7 +64,7 @@
             bidderTimeout: 10000,
             rubicon: { singleRequest: true },
             // add other prebid config here, like granularity, cmp, user syncs, bid aliases, etc.
-        }
+        };
         window.pbjs.que.push(() => {
             window.pbjs.ppi.addAdUnitPatterns(
                 [{
@@ -128,6 +128,7 @@
                             type: 'AUPSlotObject',
                             values: {
                                 slot: window.initialSlots[0],
+                                adUnitCode: 'test-1'
                             },
                         },
                         hbSource: {
@@ -175,7 +176,7 @@
             gdpr: { cmpTimeout: 16000 },
             params: {},
             pubID: "1",
-        }
+        };
 
         window.apstag.init(amazonConfig);
     </script>

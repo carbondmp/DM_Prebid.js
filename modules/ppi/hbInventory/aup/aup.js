@@ -124,11 +124,11 @@ export function createAdUnit(adUnitPattern, transactionObject) {
       utils.deepSetValue(adUnit, 'mediaTypes.banner.sizes', sortSizes(aupSizes));
     }
 
-    // if aup code was not published, generate one
-    if (!adUnit.code) {
-      // it's important that correct (and sorted) sizes enter the hash function
-      adUnit.code = hashFnv32a(JSON.stringify(adUnit)).toString(16);
-    }
+    adUnit.code = adUnit.code ||
+      // clients can specify the adUnitCode using the hbInventory.values.adUnitCode field
+      transactionObject.hbInventory?.values?.adUnitCode ||
+      // Fallback. it's important that correct (and sorted) sizes enter the hash function
+      hashFnv32a(JSON.stringify(adUnit)).toString(16);
 
     // Remove pattern properties not included in adUnit
     delete adUnit.slotPattern;

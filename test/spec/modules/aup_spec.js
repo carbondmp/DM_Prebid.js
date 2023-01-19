@@ -516,6 +516,12 @@ describe('add adUnitPattern', () => {
       adUnit = aup.createAdUnit(adUnitPattern, to);
       expect(adUnit.code).to.equal('pattern-1');
 
+      // remove code and add to.hbInventory.values.adUnitcode
+      delete adUnitPattern.code;
+      to.hbInventory.values.adUnitCode = 'adUnitCode-1';
+      adUnit = aup.createAdUnit(adUnitPattern, to);
+      expect(adUnit.code).to.equal('adUnitCode-1');
+
       // now add sizes to aup
       utils.deepSetValue(adUnitPattern, 'mediaTypes.banner.sizes', sizes);
       to.hbInventory.sizes = [];
