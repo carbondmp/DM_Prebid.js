@@ -15,7 +15,7 @@ import { config as sourceConfig } from '../src/config.js';
 const SUBMODULE_NAME = 'carbon'
 const CARBON_GVL_ID = 493;
 const MODULE_VERSION = 'v1.0'
-const DATA_HOST = 'http://pb-rtd.ccgateway.net:5789'
+const DATA_HOST = 'https://pb-rtd.ccgateway.net'
 const STORAGE_KEY = 'carbon_data'
 const PROFILE_ID_KEY = 'carbon_ccuid'
 
