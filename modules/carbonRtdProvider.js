@@ -61,72 +61,72 @@ export function matchCustomTaxonomy(rules) {
   return matchedRules.map(x => x.Id);
 }
 
-export function setGPTTargeting(carbonData) {
+export function prepareGPTTargeting(carbonData) {
   if (isGptPubadsDefined()) {
-    if (carbonData.profile) {
-      if (carbonData.profile.audiences && Array.isArray(carbonData.profile.audiences)) {
-        window.googletag.pubads().setTargeting('carbon_segment', carbonData.profile.audiences);
-      }
-    }
+    setGPTTargeting(carbonData)
+  } else {
+    window.googletag = window.googletag || {};
+    window.googletag.cmd = window.googletag.cmd || [];
+    window.googletag.cmd.push(() => setGPTTargeting(carbonData));
+  }
+}
 
-    if (carbonData.context) {
-      if (carbonData.context.pageContext && carbonData.context.pageContext.contextualclassifications && Array.isArray(carbonData.context.pageContext.contextualclassifications)) {
-        var contextSegments = carbonData.context.pageContext.contextualclassifications.map(x => {
-          if (x.type && x.type == 'iab_intent' && x.id) {
-            return x.id;
-          }
-        }).filter(x => x != undefined);
-        window.googletag.pubads().setTargeting('cc-iab-class-id', contextSegments);
-      }
+export function setGPTTargeting(carbonData) {
+  if (Array.isArray(carbonData?.profile?.audiences)) {
+    window.googletag.pubads().setTargeting('carbon_segment', carbonData.profile.audiences);
+  }
 
-      if (carbonData.context.customTaxonomy && Array.isArray(carbonData.context.customTaxonomy)) {
-        var customTaxonomyResults = matchCustomTaxonomy(carbonData.context.customTaxonomy);
-        window.googletag.pubads().setTargeting('cc-custom-taxonomy', customTaxonomyResults);
+  if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications)) {
+    var contextSegments = carbonData.context.pageContext.contextualclassifications.map(x => {
+      if (x.type && x.type == 'iab_intent' && x.id) {
+        return x.id;
       }
-    }
+    }).filter(x => x != undefined);
+    window.googletag.pubads().setTargeting('cc-iab-class-id', contextSegments);
+  }
+
+  if (Array.isArray(carbonData?.context?.customTaxonomy)) {
+    var customTaxonomyResults = matchCustomTaxonomy(carbonData.context.customTaxonomy);
+    window.googletag.pubads().setTargeting('cc-custom-taxonomy', customTaxonomyResults);
   }
 }
 
 export function setPrebidConfig(carbonData) {
   const ortbData = { user: {}, site: {} };
 
-  if (carbonData.profile) {
-    if (carbonData.profile.audiences && Array.isArray(carbonData.profile.audiences)) {
-      var userSegments = carbonData.profile.audiences.map(function (x) { return { id: x } });
-      ortbData.user.data = [{
-        name: 'www.ccgateway.net',
-        ext: { segtax: 507 }, // 507 Magnite Custom Audiences
-        segment: userSegments
-      }];
-    }
+  if (Array.isArray(carbonData?.profile?.audiences)) {
+    var userSegments = carbonData.profile.audiences.map(function (x) { return { id: x } });
+    ortbData.user.data = [{
+      name: 'www.ccgateway.net',
+      ext: { segtax: 507 }, // 507 Magnite Custom Audiences
+      segment: userSegments
+    }];
   }
 
-  if (carbonData.context) {
-    if (carbonData.context.pageContext && carbonData.context.pageContext.contextualclassifications && Array.isArray(carbonData.context.pageContext.contextualclassifications)) {
-      var contextSegments = carbonData.context.pageContext.contextualclassifications.map(function (x) {
-        if (x.type && x.type == 'iab_intent' && x.id) {
-          return { id: x.id };
-        }
-      }).filter(x => x !== undefined);
-      ortbData.site.content = ortbData.site.content || {};
-      ortbData.site.content.data = [{
-        name: 'www.ccgateway.net',
-        ext: { segtax: 2 },
-        segment: contextSegments
-      }];
-    }
+  if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications)) {
+    var contextSegments = carbonData.context.pageContext.contextualclassifications.map(function (x) {
+      if (x.type && x.type == 'iab_intent' && x.id) {
+        return { id: x.id };
+      }
+    }).filter(x => x !== undefined);
+    ortbData.site.content = ortbData.site.content || {};
+    ortbData.site.content.data = [{
+      name: 'www.ccgateway.net',
+      ext: { segtax: 2 },
+      segment: contextSegments
+    }];
+  }
 
-    if (carbonData.context.customTaxonomy && Array.isArray(carbonData.context.customTaxonomy)) {
-      ortbData.site.ext = ortbData.site.ext || {};
-      ortbData.site.ext.data = ortbData.site.ext.data || {};
-      ortbData.site.ext.data.customTaxonomy = matchCustomTaxonomy(carbonData.context.customTaxonomy);
-    }
+  if (Array.isArray(carbonData?.context?.customTaxonomy)) {
+    ortbData.site.ext = ortbData.site.ext || {};
+    ortbData.site.ext.data = ortbData.site.ext.data || {};
+    ortbData.site.ext.data.customTaxonomy = matchCustomTaxonomy(carbonData.context.customTaxonomy);
+  }
 
-    if (carbonData.context.dealIds && Array.isArray(carbonData.context.dealIds)) {
-      ortbData.site.ext = ortbData.site.ext || {};
-      ortbData.site.ext.data = ortbData.site.ext.data || {};
-      ortbData.site.ext.data.dealIds = carbonData.context.dealIds;
-    }
+  if (Array.isArray(carbonData?.context?.dealIds)) {
+    ortbData.site.ext = ortbData.site.ext || {};
+    ortbData.site.ext.data = ortbData.site.ext.data || {};
+    ortbData.site.ext.data.dealIds = carbonData.context.dealIds;
   }
 
   sourceConfig.mergeConfig({ortb2: ortbData});
@@ -159,7 +159,7 @@ export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
     }
   }
 
-  if (moduleConfig.params.features) {
+  if (moduleConfig?.params?.features) {
     reqUrl.searchParams.append('context', moduleConfig.params.features.enableContext);
     reqUrl.searchParams.append('audience', moduleConfig.params.features.enableAudience);
     reqUrl.searchParams.append('custom_taxonomy', moduleConfig.params.features.enableCustomTaxonomy);
@@ -177,7 +177,7 @@ export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
         }
 
         setPrebidConfig(carbonData);
-        setGPTTargeting(carbonData);
+        prepareGPTTargeting(carbonData);
         setLocalStorage(carbonData);
         callback();
       }
@@ -194,7 +194,7 @@ export function bidRequestHandler(bidReqConfig, callback, moduleConfig, userCons
 
     if (carbonData) {
       setPrebidConfig(carbonData, moduleConfig);
-      setGPTTargeting(carbonData, moduleConfig);
+      prepareGPTTargeting(carbonData, moduleConfig);
     }
   } catch (err) {
     logError(err);
