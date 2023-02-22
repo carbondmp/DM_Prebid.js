@@ -29,19 +29,19 @@ export function setLocalStorage(carbonData) {
 export function matchCustomTaxonomyRule (rule) {
   const contentText = window.top.document.body.innerText;
   if (rule.MatchType == 'any') {
-    for (var anyWord in rule.WordWeights) {
-      var anyRegex = RegExp('\\b' + anyWord + '\\b', 'i');
-      var anyResult = contentText.match(anyRegex);
+    for (let anyWord in rule.WordWeights) {
+      let anyRegex = RegExp('\\b' + anyWord + '\\b', 'i');
+      let anyResult = contentText.match(anyRegex);
 
       if (anyResult) {
         return true;
       }
     }
   } else if (rule.MatchType == 'minmatch') {
-    var score = 0;
-    for (var minWord in rule.WordWeights) {
-      var minRegex = RegExp('\\b' + minWord + '\\b', 'gi');
-      var minResult = contentText.match(minRegex);
+    let score = 0;
+    for (let minWord in rule.WordWeights) {
+      let minRegex = RegExp('\\b' + minWord + '\\b', 'gi');
+      let minResult = contentText.match(minRegex);
 
       if (minResult) {
         score += (rule.WordWeights[minWord] * minResult.length);
@@ -57,7 +57,7 @@ export function matchCustomTaxonomyRule (rule) {
 }
 
 export function matchCustomTaxonomy(rules) {
-  var matchedRules = rules.filter(matchCustomTaxonomyRule);
+  let matchedRules = rules.filter(matchCustomTaxonomyRule);
   return matchedRules.map(x => x.Id);
 }
 
@@ -77,7 +77,7 @@ export function setGPTTargeting(carbonData) {
   }
 
   if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications)) {
-    var contextSegments = carbonData.context.pageContext.contextualclassifications.map(x => {
+    let contextSegments = carbonData.context.pageContext.contextualclassifications.map(x => {
       if (x.type && x.type == 'iab_intent' && x.id) {
         return x.id;
       }
@@ -86,7 +86,7 @@ export function setGPTTargeting(carbonData) {
   }
 
   if (Array.isArray(carbonData?.context?.customTaxonomy)) {
-    var customTaxonomyResults = matchCustomTaxonomy(carbonData.context.customTaxonomy);
+    let customTaxonomyResults = matchCustomTaxonomy(carbonData.context.customTaxonomy);
     window.googletag.pubads().setTargeting('cc-custom-taxonomy', customTaxonomyResults);
   }
 }
@@ -95,7 +95,7 @@ export function setPrebidConfig(carbonData) {
   const ortbData = { user: {}, site: {} };
 
   if (Array.isArray(carbonData?.profile?.audiences)) {
-    var userSegments = carbonData.profile.audiences.map(function (x) { return { id: x } });
+    let userSegments = carbonData.profile.audiences.map(function (x) { return { id: x } });
     ortbData.user.data = [{
       name: 'www.ccgateway.net',
       ext: { segtax: 507 }, // 507 Magnite Custom Audiences
@@ -104,7 +104,7 @@ export function setPrebidConfig(carbonData) {
   }
 
   if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications)) {
-    var contextSegments = carbonData.context.pageContext.contextualclassifications.map(function (x) {
+    let contextSegments = carbonData.context.pageContext.contextualclassifications.map(function (x) {
       if (x.type && x.type == 'iab_intent' && x.id) {
         return { id: x.id };
       }
@@ -146,10 +146,10 @@ export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
     let eids = getGlobal().getUserIdsAsEids();
 
     if (eids && eids.length > 0) {
-      for (var i = 0; i < eids.length; i++) {
+      for (let i = 0; i < eids.length; i++) {
         if (eids[i] && eids[i].uids && eids[i].uids.length > 0) {
           let source = eids[i].source;
-          for (var ii = 0; ii < eids[i].uids.length; ii++) {
+          for (let ii = 0; ii < eids[i].uids.length; ii++) {
             let uid = eids[i].uids[ii].id;
 
             reqUrl.searchParams.append('eid', `${source}:${uid}`)
@@ -168,7 +168,7 @@ export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
 
   ajax(reqUrl, {
     success: function (response, req) {
-      var carbonData = {};
+      let carbonData = {};
       if (req.status === 200) {
         try {
           carbonData = JSON.parse(response);
