@@ -8,7 +8,7 @@ import CONSTANTS from '../src/constants.json';
 
 const CARBON_GVL_ID = 493;
 const ANALYTICS_VERSION = 'v1.0';
-const CARBON_ANALYTICS_URL = 'http://pb-ing.ccgateway.net:6789';
+const CARBON_ANALYTICS_URL = 'https://pb-ing.ccgateway.net';
 const PROFILE_ID_KEY = 'carbon_ccuid';
 const PROFILE_ID_COOKIE = 'ccuid';
 const SESSION_ID_COOKIE = 'ccsid';
