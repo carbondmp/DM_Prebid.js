@@ -81,10 +81,10 @@ carbonAdapter.enableAnalytics = function (config) {
 };
 
 function getProfileId() {
-  if (storage.localStorageIsEnabled) {
+  if (storage.localStorageIsEnabled()) {
     let localStorageId = storage.getDataFromLocalStorage(PROFILE_ID_KEY);
     if (localStorageId && localStorageId != '') {
-      if (storage.cookiesAreEnabled) {
+      if (storage.cookiesAreEnabled()) {
         storage.setCookie(PROFILE_ID_COOKIE, localStorageId, new Date(Date.now() + 89 * DAY_MS), 'Lax');
       }
 
@@ -92,10 +92,10 @@ function getProfileId() {
     }
   }
 
-  if (storage.cookiesAreEnabled) {
+  if (storage.cookiesAreEnabled()) {
     let cookieId = storage.getCookie(PROFILE_ID_COOKIE);
     if (cookieId && cookieId != '') {
-      if (storage.localStorageIsEnabled) {
+      if (storage.localStorageIsEnabled()) {
         storage.setDataInLocalStorage(PROFILE_ID_KEY, cookieId);
       }
 
@@ -106,11 +106,11 @@ function getProfileId() {
   }
 
   let newId = generateUUID();
-  if (storage.localStorageIsEnabled) {
+  if (storage.localStorageIsEnabled()) {
     storage.setDataInLocalStorage(PROFILE_ID_KEY, newId);
   }
 
-  if (storage.cookiesAreEnabled) {
+  if (storage.cookiesAreEnabled()) {
     storage.setCookie(PROFILE_ID_COOKIE, newId, new Date(Date.now() + 89 * DAY_MS), 'Lax');
   }
 
@@ -118,7 +118,7 @@ function getProfileId() {
 }
 
 function getSessionId() {
-  if (storage.cookiesAreEnabled) {
+  if (storage.cookiesAreEnabled()) {
     let cookieId = storage.getCookie(SESSION_ID_COOKIE);
     if (cookieId && cookieId != '') {
       storage.setCookie(SESSION_ID_COOKIE, cookieId, new Date(Date.now() + 5 * MINUTE_MS), 'Lax');
@@ -129,7 +129,7 @@ function getSessionId() {
 
   let newId = generateUUID();
 
-  if (storage.cookiesAreEnabled) {
+  if (storage.cookiesAreEnabled()) {
     storage.setCookie(SESSION_ID_COOKIE, newId, new Date(Date.now() + 5 * MINUTE_MS), 'Lax');
   }
 
@@ -156,14 +156,14 @@ function getConsentData(args) {
     ccpa_consent: ''
   };
 
-  if (args.bidderRequests && Array.isArray(args.bidderRequests) && args.bidderRequests.length > 0) {
+  if (Array.isArray(args?.bidderRequests) && args.bidderRequests.length > 0) {
     let bidderRequest = args.bidderRequests[0];
 
-    if (bidderRequest.gdprConsent && bidderRequest.gdprConsent.consentString) {
+    if (bidderRequest?.gdprConsent?.consentString) {
       consentData.gdpr_consent = bidderRequest.gdprConsent.consentString;
     }
 
-    if (bidderRequest.uspConsent && bidderRequest.uspConsent.consentString) {
+    if (bidderRequest?.uspConsent?.consentString) {
       consentData.ccpa_consent = bidderRequest.uspConsent.consentString;
     }
   }
