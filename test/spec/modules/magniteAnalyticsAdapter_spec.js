@@ -234,9 +234,7 @@ const ANALYTICS_MESSAGE = {
     'start': 1519767013781,
     'expires': 1519788613781
   },
-  'client': {
-    'browser': 'Chrome'
-  },
+  'clientBrowser': 'Chrome',
   'auctions': [
     {
       'auctionId': '99785e47-a7c8-4c8a-ae05-ef1c717a4b4d',
@@ -443,6 +441,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
+        pbaBrowserLocation: 'clientBrowser',
         fpkvs: {
           source: 'fb'
         },
@@ -470,6 +469,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
+        pbaBrowserLocation: 'clientBrowser',
         fpkvs: {
           source: 'fb',
           link: 'email'
@@ -498,6 +498,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
+        pbaBrowserLocation: 'clientBrowser',
         fpkvs: {
           link: 'iMessage',
           source: 'twitter'
