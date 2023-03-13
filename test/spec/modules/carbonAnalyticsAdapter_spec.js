@@ -72,7 +72,7 @@ describe('carbonAnalyticsAdapter', function() {
       expect(requestBody.engagement_id).to.equal('test_engagement_id')
       expect(requestBody.engagement_count).to.equal(0)
       expect(requestBody.engagement_ttl).to.equal(60)
-      expect(requestBody.received_at_ms).to.equal(1000000000000)
+      expect(requestBody.received_at).to.equal(1000000000000)
     })
   })
 
@@ -107,7 +107,7 @@ describe('carbonAnalyticsAdapter', function() {
       const tcfEnforcementBody = JSON.parse(ajaxStub.firstCall.args[2])
 
       expect(tcfEnforcementUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/tcf_enforcement')
-      expect(tcfEnforcementBody.received_at_ms).to.equal(1000000000000)
+      expect(tcfEnforcementBody.received_at).to.equal(1000000000000)
 
       const auctionEndUrl = new URL(ajaxStub.secondCall.args[0])
       const auctionEndBody = JSON.parse(ajaxStub.secondCall.args[2])
@@ -115,7 +115,7 @@ describe('carbonAnalyticsAdapter', function() {
       expect(auctionEndUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/auction_end')
       expect(auctionEndBody.consent.gdpr_consent).to.equal('testGDPR')
       expect(auctionEndBody.consent.ccpa_consent).to.equal('testUSP')
-      expect(auctionEndBody.received_at_ms).to.equal(1000000000000)
+      expect(auctionEndBody.received_at).to.equal(1000000000000)
     })
 
     it('should generate a new engagement', function() {
@@ -135,7 +135,7 @@ describe('carbonAnalyticsAdapter', function() {
       const tcfEnforcementBody = JSON.parse(ajaxStub.firstCall.args[2])
 
       expect(tcfEnforcementUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/tcf_enforcement')
-      expect(tcfEnforcementBody.received_at_ms).to.equal(1000001000010)
+      expect(tcfEnforcementBody.received_at).to.equal(1000001000010)
 
       const auctionEndUrl = new URL(ajaxStub.secondCall.args[0])
       const auctionEndBody = JSON.parse(ajaxStub.secondCall.args[2])
@@ -146,7 +146,7 @@ describe('carbonAnalyticsAdapter', function() {
       expect(auctionEndBody.engagement_id).to.equal('test_engagement_id_2')
       expect(auctionEndBody.engagement_count).to.equal(1)
       expect(auctionEndBody.engagement_ttl).to.equal(60)
-      expect(auctionEndBody.received_at_ms).to.equal(1000001000020)
+      expect(auctionEndBody.received_at).to.equal(1000001000020)
     })
   })
 })

@@ -196,7 +196,7 @@ function createBaseEngagementEvent(args) {
   event.url = window.location.href;
   event.referrer = document.referrer;
 
-  event.received_at_ms = Date.now();
+  event.received_at = Date.now();
 
   if (args) {
     event.consent = getConsentData(args);
