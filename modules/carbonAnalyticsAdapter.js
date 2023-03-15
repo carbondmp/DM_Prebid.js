@@ -20,7 +20,6 @@ const MINUTE_MS = 60 * 1000;
 
 export const storage = getStorageManager({gvlid: CARBON_GVL_ID, moduleName: 'carbon'});
 
-let enabledEvents = [];
 let pageViewId = '';
 let profileId = '';
 let sessionId = '';
@@ -29,7 +28,6 @@ let pageEngagement = {};
 
 let carbonAdapter = Object.assign(adapter({CARBON_ANALYTICS_URL, ANALYTICS_TYPE}), {
   track({eventType, args}) {
-    if (!enabledEvents.includes(eventType)) return;
     args = args ? JSON.parse(JSON.stringify(args)) : {};
     switch (eventType) {
       case CONSTANTS.EVENTS.AUCTION_END: {
@@ -47,6 +45,9 @@ let carbonAdapter = Object.assign(adapter({CARBON_ANALYTICS_URL, ANALYTICS_TYPE}
         sendEngagementEvent(event, 'tcf_enforcement');
         break;
       }
+      default: {
+        break;
+      }
     }
   }
 });
@@ -58,9 +59,6 @@ carbonAdapter.originEnableAnalytics = carbonAdapter.enableAnalytics;
 carbonAdapter.enableAnalytics = function (config) {
   if (config.options) {
     parentId = config.options.parentId;
-    if (config.options.enabledEvents) {
-      enabledEvents = config.options.enabledEvents;
-    }
   }
 
   pageViewId = generateUUID();
