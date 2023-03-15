@@ -142,20 +142,17 @@ export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
   reqUrl.searchParams.append('profile_id', profileId);
   reqUrl.searchParams.append('url', encodeURIComponent(pageUrl));
 
-  if (getGlobal().getUserIds && typeof getGlobal().getUserIds == 'function') {
+  if (getGlobal().getUserIdsAsEids && typeof getGlobal().getUserIdsAsEids == 'function') {
     let eids = getGlobal().getUserIdsAsEids();
 
-    if (eids && eids.length > 0) {
-      for (let i = 0; i < eids.length; i++) {
-        if (eids[i] && eids[i].uids && eids[i].uids.length > 0) {
-          let source = eids[i].source;
-          for (let ii = 0; ii < eids[i].uids.length; ii++) {
-            let uid = eids[i].uids[ii].id;
-
-            reqUrl.searchParams.append('eid', `${source}:${uid}`)
-          }
+    if (eids && eids.length) {
+      eids.forEach(eid => {
+        if (eid?.uids?.length) {
+          eid.uids.forEach(uid => {
+            reqUrl.searchParams.append('eid', `${eid.source}:${uid.id}`)
+          });
         }
-      }
+      });
     }
   }
 
