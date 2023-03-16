@@ -173,7 +173,15 @@ function getExternalIds() {
   let externalIds = {};
 
   if (getGlobal().getUserIdsAsEids && typeof getGlobal().getUserIdsAsEids == 'function') {
-    externalIds = getGlobal().getUserIdsAsEids(); // TODO this is a grey area, we need to look further into the viability of this
+    let eids = getGlobal().getUserIdsAsEids();
+
+    if (eids?.length) {
+      eids.forEach(eid => {
+        if (eid.source && eid?.uids?.length) {
+          externalIds[eid.source] = eid.uids.map(uid => uid.id);
+        }
+      });
+    }
   }
 
   return externalIds;
