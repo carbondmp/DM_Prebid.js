@@ -1,4 +1,4 @@
-import { generateUUID } from '../src/utils.js';
+import { logError, generateUUID } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
 import { getStorageManager } from '../src/storageManager.js';
 import {getGlobal} from '../src/prebidGlobal.js';
@@ -8,7 +8,6 @@ import CONSTANTS from '../src/constants.json';
 
 const CARBON_GVL_ID = 493;
 const ANALYTICS_VERSION = 'v1.0';
-const CARBON_ANALYTICS_URL = 'https://pb-ing.ccgateway.net';
 const PROFILE_ID_KEY = 'carbon_ccuid';
 const PROFILE_ID_COOKIE = 'ccuid';
 const SESSION_ID_COOKIE = 'ccsid';
@@ -20,13 +19,14 @@ const MINUTE_MS = 60 * 1000;
 
 export const storage = getStorageManager({gvlid: CARBON_GVL_ID, moduleName: 'carbon'});
 
+let analyticsHost = '';
 let pageViewId = '';
 let profileId = '';
 let sessionId = '';
 let parentId = '';
 let pageEngagement = {};
 
-let carbonAdapter = Object.assign(adapter({CARBON_ANALYTICS_URL, ANALYTICS_TYPE}), {
+let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
   track({eventType, args}) {
     args = args ? JSON.parse(JSON.stringify(args)) : {};
     switch (eventType) {
@@ -57,8 +57,16 @@ carbonAdapter.originEnableAnalytics = carbonAdapter.enableAnalytics;
 
 // override enableAnalytics so we can get access to the config passed in from the page
 carbonAdapter.enableAnalytics = function (config) {
-  if (config.options) {
+  if (config?.options?.parentId) {
     parentId = config.options.parentId;
+  } else {
+    logError('required config value "parentId" not provided');
+  }
+
+  if (config?.options.endpoint) {
+    analyticsHost = config.options.endpoint;
+  } else {
+    logError('required config value "endpoint" not provided');
   }
 
   pageViewId = generateUUID();
@@ -214,7 +222,7 @@ function createBaseEngagementEvent(args) {
 }
 
 function sendEngagementEvent(event, eventTrigger) {
-  let reqUrl = `${CARBON_ANALYTICS_URL}/${ANALYTICS_VERSION}/parent/${parentId}/engagement/trigger/${eventTrigger}`;
+  let reqUrl = `${analyticsHost}/${ANALYTICS_VERSION}/parent/${parentId}/engagement/trigger/${eventTrigger}`;
   ajax(reqUrl, undefined,
     JSON.stringify(event),
     {

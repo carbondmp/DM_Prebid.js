@@ -15,9 +15,12 @@ import { config as sourceConfig } from '../src/config.js';
 const SUBMODULE_NAME = 'carbon'
 const CARBON_GVL_ID = 493;
 const MODULE_VERSION = 'v1.0'
-const DATA_HOST = 'https://pb-rtd.ccgateway.net'
 const STORAGE_KEY = 'carbon_data'
 const PROFILE_ID_KEY = 'carbon_ccuid'
+
+let rtdHost = '';
+let parentId = '';
+let features = {};
 
 export const storage = getStorageManager({ gvlid: CARBON_GVL_ID, moduleName: SUBMODULE_NAME })
 
@@ -132,13 +135,12 @@ export function setPrebidConfig(carbonData) {
   sourceConfig.mergeConfig({ortb2: ortbData});
 }
 
-export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
+export function updateRealTimeDataAsync(callback, userConsent) {
   let doc = window.top.document;
   let pageUrl = `${doc.location.protocol}//${doc.location.host}${doc.location.pathname}`;
-  let parentId = moduleConfig.params.parentId;
   let profileId = storage.getDataFromLocalStorage(PROFILE_ID_KEY) || '';
 
-  let reqUrl = new URL(`${DATA_HOST}/${MODULE_VERSION}/realtime/${parentId}`);
+  let reqUrl = new URL(`${rtdHost}/${MODULE_VERSION}/realtime/${parentId}`);
   reqUrl.searchParams.append('profile_id', profileId);
   reqUrl.searchParams.append('url', encodeURIComponent(pageUrl));
 
@@ -156,12 +158,10 @@ export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
     }
   }
 
-  if (moduleConfig?.params?.features) {
-    reqUrl.searchParams.append('context', moduleConfig.params.features.enableContext);
-    reqUrl.searchParams.append('audience', moduleConfig.params.features.enableAudience);
-    reqUrl.searchParams.append('custom_taxonomy', moduleConfig.params.features.enableCustomTaxonomy);
-    reqUrl.searchParams.append('deal_ids', moduleConfig.params.features.enableDealId);
-  }
+  reqUrl.searchParams.append('context', features.enableContext);
+  reqUrl.searchParams.append('audience', features.enableAudience);
+  reqUrl.searchParams.append('custom_taxonomy', features.enableCustomTaxonomy);
+  reqUrl.searchParams.append('deal_ids', features.enableDealId);
 
   ajax(reqUrl, {
     success: function (response, req) {
@@ -185,23 +185,39 @@ export function updateRealTimeDataAsync(callback, moduleConfig, userConsent) {
   });
 }
 
-export function bidRequestHandler(bidReqConfig, callback, moduleConfig, userConsent) {
+export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
   try {
     const carbonData = JSON.parse(storage.getDataFromLocalStorage(STORAGE_KEY) || '{}')
 
     if (carbonData) {
-      setPrebidConfig(carbonData, moduleConfig);
-      prepareGPTTargeting(carbonData, moduleConfig);
+      setPrebidConfig(carbonData);
+      prepareGPTTargeting(carbonData);
     }
   } catch (err) {
     logError(err);
   }
 
-  updateRealTimeDataAsync(callback, moduleConfig, userConsent);
+  updateRealTimeDataAsync(callback, userConsent);
   callback();
 }
 
 function init(moduleConfig, userConsent) {
+  if (moduleConfig?.params?.parentId) {
+    parentId = moduleConfig.params.parentId;
+  } else {
+    logError('required config value "parentId" not provided');
+    return false;
+  }
+
+  if (moduleConfig?.params?.endpoint) {
+    rtdHost = moduleConfig.params.endpoint;
+  } else {
+    logError('required config value "endpoint" not provided');
+    return false;
+  }
+
+  features = moduleConfig?.params?.features || {};
+
   return true;
 }
 

@@ -15,7 +15,7 @@ pbjs.enableAnalytics({
   provider: 'carbon',
   options: {
     parentId: '', //Contact Magnite to recieve your unique ID
-    enabledEvents: ['auctionEnd', 'tcf2Enforcement']
+    endpoint: '' //Contact magnite to recieve the analytics endpoint value
   }
 });
 ```
