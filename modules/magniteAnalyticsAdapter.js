@@ -907,6 +907,7 @@ magniteAdapter.track = ({ eventType, args }) => {
       handleNonBidEvent(args);
       break;
     case BIDDER_DONE:
+      logInfo(`BOBBY: Auction: ${args.auctionId} Bidder: ${args.bidderCode} - ${Date.now() - cache.auctions[args.auctionId].auction.auctionStart}`);
       const serverError = deepAccess(args, 'serverErrors.0');
       const serverResponseTimeMs = args.serverResponseTimeMs;
       args.bids.forEach(bid => {
