@@ -892,7 +892,7 @@ magniteAdapter.track = ({ eventType, args }) => {
             code: 'request-error'
           };
       }
-      bid.clientLatencyMillis = args.timeToRespond || args.metrics.getMetrics()['adapter.client.total'];
+      bid.clientLatencyMillis = args.timeToRespond || parseInt(args.metrics.getMetrics()['adapter.client.total']);
       bid.bidResponse = parseBidResponse(args, bid.bidResponse);
 
       // if pbs gave us back a bidId, we need to use it and update our bidId to PBA
@@ -925,9 +925,9 @@ magniteAdapter.track = ({ eventType, args }) => {
 
         // set client latency if not done yet
         if (!cachedBid.clientLatencyMillis) {
-          cachedBid.clientLatencyMillis = bid.metrics.getMetrics()['adapter.client.total'];
+          cachedBid.clientLatencyMillis = parseInt(bid.metrics.getMetrics()['adapter.client.total']);
         }
-        cachedBid.httpLatency = bid.metrics.getMetrics()['adapter.client.net'][0];
+        cachedBid.httpLatency = parseInt(bid.metrics.getMetrics()['adapter.client.net'][0]);
       });
       break;
     case BID_WON:
