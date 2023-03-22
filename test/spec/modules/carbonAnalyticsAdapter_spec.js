@@ -58,7 +58,7 @@ describe('carbonAnalyticsAdapter', function() {
         provider: 'carbon',
         options: {
           parentId: 'aaabbb',
-          enabledEvents: ['auctionEnd', 'tcf2Enforcement']
+          endpoint: 'http://test.example.com'
         }
       })
 
@@ -88,7 +88,7 @@ describe('carbonAnalyticsAdapter', function() {
         provider: 'carbon',
         options: {
           parentId: 'aaabbb',
-          enabledEvents: ['auctionEnd', 'tcf2Enforcement']
+          endpoint: 'http://test.example.com'
         }
       })
 

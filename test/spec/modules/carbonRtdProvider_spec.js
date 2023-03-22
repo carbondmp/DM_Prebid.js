@@ -75,6 +75,7 @@ const targetingData = {
 const moduleConfig = {
   params: {
     parentId: 'testId',
+    endpoint: 'http://test.example.com',
     features: {
       enableContext: true,
       enableAudience: true,
@@ -103,8 +104,12 @@ describe('carbonRtdProvider', function() {
   })
 
   describe('carbonSubmodule', function () {
+    it('should fail to initialise without config and return false', function () {
+      expect(carbonSubmodule.init()).to.equal(false)
+    })
+
     it('should initialise and return true', function () {
-      expect(carbonSubmodule.init()).to.equal(true)
+      expect(carbonSubmodule.init(moduleConfig)).to.equal(true)
     })
   })
 

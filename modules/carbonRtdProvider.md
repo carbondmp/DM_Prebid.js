@@ -27,7 +27,14 @@ pbjs.setConfig({
         name: 'carbon',
         waitForIt: true,
         params: {
-          parentId: '' //Contact Magnite for a unique ID
+          parentId: '', //Contact Magnite for a unique ID
+          endpoint: '', //Contact magnite to recieve the analytics endpoint value
+          features: {
+            enableContext: true,
+            enableAudience: true,
+            enableCustomTaxonomy: true,
+            enableDealId: true
+          }
         }
       }
     ]
