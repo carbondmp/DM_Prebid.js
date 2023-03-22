@@ -927,7 +927,7 @@ magniteAdapter.track = ({ eventType, args }) => {
         if (!cachedBid.clientLatencyMillis) {
           cachedBid.clientLatencyMillis = bid.metrics.getMetrics()['adapter.client.total'];
         }
-        cachedBid.httpLatency = bid.metrics.getMetrics()['adapter.client.net'];
+        cachedBid.httpLatency = bid.metrics.getMetrics()['adapter.client.net'][0];
       });
       break;
     case BID_WON:
