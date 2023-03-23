@@ -74,7 +74,7 @@ carbonAdapter.enableAnalytics = function (config) {
   sessionId = getSessionId();
 
   pageEngagement = { // create the initial page engagement event
-    ttl: 60 * 1, // should be multiple of 60, unit is seconds
+    ttl: 60, // unit is seconds
     count: 0,
     id: generateUUID(),
     timeLastEngage: Date.now()
@@ -128,18 +128,15 @@ function getSessionId() {
     let cookieId = storage.getCookie(SESSION_ID_COOKIE);
     if (cookieId && cookieId != '') {
       storage.setCookie(SESSION_ID_COOKIE, cookieId, new Date(Date.now() + 5 * MINUTE_MS), 'Lax');
-
       return cookieId;
     }
-  }
 
-  let newId = generateUUID();
-
-  if (storage.cookiesAreEnabled()) {
+    let newId = generateUUID();
     storage.setCookie(SESSION_ID_COOKIE, newId, new Date(Date.now() + 5 * MINUTE_MS), 'Lax');
+    return newId;
   }
 
-  return newId;
+  return generateUUID();
 }
 
 function registerEngagement() {
