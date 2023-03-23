@@ -158,10 +158,21 @@ export function updateRealTimeDataAsync(callback, userConsent) {
     }
   }
 
-  reqUrl.searchParams.append('context', features.enableContext);
-  reqUrl.searchParams.append('audience', features.enableAudience);
-  reqUrl.searchParams.append('custom_taxonomy', features.enableCustomTaxonomy);
-  reqUrl.searchParams.append('deal_ids', features.enableDealId);
+  if (features?.enableContext !== undefined) {
+    reqUrl.searchParams.append('context', features.enableContext);
+  }
+
+  if (features?.enableAudience !== undefined) {
+    reqUrl.searchParams.append('audience', features.enableAudience);
+  }
+
+  if (features?.enableCustomTaxonomy !== undefined) {
+    reqUrl.searchParams.append('custom_taxonomy', features.enableCustomTaxonomy);
+  }
+
+  if (features?.enableDealId !== undefined) {
+    reqUrl.searchParams.append('deal_ids', features.enableDealId);
+  }
 
   ajax(reqUrl, {
     success: function (response, req) {
