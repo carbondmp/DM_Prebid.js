@@ -925,9 +925,17 @@ magniteAdapter.track = ({ eventType, args }) => {
 
         // set client latency if not done yet
         if (!cachedBid.clientLatencyMillis) {
-          cachedBid.clientLatencyMillis = parseInt(bid.metrics.getMetrics()['adapter.client.total']);
+          try {
+            cachedBid.clientLatencyMillis = parseInt(bid.metrics.getMetrics()[`adapter.${bid.src}.total`]);
+          } catch (error) {
+            cachedBid.clientLatencyMillis = Date.now() - cache.auctions[args.auctionId].auction.auctionStart;
+          }
         }
-        cachedBid.httpLatency = parseInt(bid.metrics.getMetrics()['adapter.client.net'][0]);
+        try {
+          cachedBid.httpLatency = parseInt(bid.metrics.getMetrics()[`adapter.${bid.src}.net`][0]);
+        } catch (error) {
+          logInfo(`${MODULE_NAME}: unable to get http latency for bid`, bid);
+        }
       });
       break;
     case BID_WON:
