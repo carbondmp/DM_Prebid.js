@@ -8,7 +8,7 @@
 import { submodule } from '../src/hook.js';
 import { ajax } from '../src/ajax.js';
 import {getGlobal} from '../src/prebidGlobal.js';
-import { logError, isGptPubadsDefined } from '../src/utils.js';
+import { logError, isGptPubadsDefined, generateUUID } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 import { config as sourceConfig } from '../src/config.js';
 
@@ -138,7 +138,9 @@ export function setPrebidConfig(carbonData) {
 export function updateRealTimeDataAsync(callback, userConsent) {
   let doc = window.top.document;
   let pageUrl = `${doc.location.protocol}//${doc.location.host}${doc.location.pathname}`;
-  let profileId = storage.getDataFromLocalStorage(PROFILE_ID_KEY) || '';
+
+  // generate an arbitrary ID if storage is blocked so that contextual data can still be retrieved
+  let profileId = storage.getDataFromLocalStorage(PROFILE_ID_KEY) || generateUUID();
 
   let reqUrl = new URL(`${rtdHost}/${MODULE_VERSION}/realtime/${parentId}`);
   reqUrl.searchParams.append('profile_id', profileId);
