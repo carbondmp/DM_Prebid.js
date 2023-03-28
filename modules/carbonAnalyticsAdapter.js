@@ -1,4 +1,4 @@
-import { logError, generateUUID } from '../src/utils.js';
+import { deepAccess, generateUUID, logError } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
 import { getStorageManager } from '../src/storageManager.js';
 import {getGlobal} from '../src/prebidGlobal.js';
@@ -37,12 +37,15 @@ let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
         break;
       }
       case CONSTANTS.EVENTS.TCF2_ENFORCEMENT: {
-        registerEngagement();
-        let event = createBaseEngagementEvent(args);
+        // check for relevant tcf information on the event before recording
+        if (args.storageBlocked?.length > 0 || args.biddersBlocked?.length > 0 || args.analyticsBlocked.length > 0) {
+          registerEngagement();
+          let event = createBaseEngagementEvent(args);
 
-        event.tcf_events = args; // Do we only want relevant information here?
+          event.tcf_events = args;
 
-        sendEngagementEvent(event, 'tcf_enforcement');
+          sendEngagementEvent(event, 'tcf_enforcement');
+        }
         break;
       }
       default: {
@@ -186,10 +189,10 @@ function getExternalIds() {
           externalIds[eid.source] = eid.uids.map(uid => uid.id);
         }
       });
+
+      return externalIds;
     }
   }
-
-  return externalIds;
 }
 
 function createBaseEngagementEvent(args) {
@@ -205,11 +208,11 @@ function createBaseEngagementEvent(args) {
 
   event.script_id = window.location.host;
   event.url = window.location.href;
-  event.referrer = document.referrer;
+  event.referrer = document.referrer || deepAccess(args, 'bidderRequests.0.refererInfo.page') || undefined;
 
   event.received_at = Date.now();
 
-  if (args) {
+  if (args?.bidderRequests) {
     event.consent = getConsentData(args);
   }
 
