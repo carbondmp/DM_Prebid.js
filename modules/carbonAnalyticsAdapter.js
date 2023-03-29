@@ -38,7 +38,7 @@ let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
       }
       case CONSTANTS.EVENTS.TCF2_ENFORCEMENT: {
         // check for relevant tcf information on the event before recording
-        if (args.storageBlocked?.length > 0 || args.biddersBlocked?.length > 0 || args.analyticsBlocked.length > 0) {
+        if (args.storageBlocked?.length > 0 || args.biddersBlocked?.length > 0 || args.analyticsBlocked?.length > 0) {
           registerEngagement();
           let event = createBaseEngagementEvent(args);
 
