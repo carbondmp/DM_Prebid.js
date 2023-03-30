@@ -708,9 +708,9 @@ const getLatencies = (args, auctionStart) => {
     const metrics = args.metrics.getMetrics();
     const src = args.src || args.source;
     return {
-      total: metrics[`adapter.${src}.total`],
+      total: parseInt(metrics[`adapter.${src}.total`]),
       // If it is array, get slowest
-      net: Array.isArray(metrics[`adapter.${src}.net`]) ? metrics[`adapter.${src}.net`][metrics[`adapter.${src}.net`].length - 1] : metrics[`adapter.${src}.net`]
+      net: parseInt(Array.isArray(metrics[`adapter.${src}.net`]) ? metrics[`adapter.${src}.net`][metrics[`adapter.${src}.net`].length - 1] : metrics[`adapter.${src}.net`])
     }
   } catch (error) {
     // default to old way if not able to get better ones
@@ -926,9 +926,11 @@ magniteAdapter.track = ({ eventType, args }) => {
         }
 
         // set client latency if not done yet
-        const latencies = getLatencies(args, deepAccess(cache, `auctions.${args.auctionId}.auction.auctionStart`));
-        bid.clientLatencyMillis = cachedBid.clientLatencyMillis || latencies.total;
-        bid.httpLatencyMillis = cachedBid.clientLatencyMillis || latencies.net;
+        if (!cachedBid.clientLatencyMillis || !cachedBid.httpLatencyMillis) {
+          const latencies = getLatencies(bid, deepAccess(cache, `auctions.${args.auctionId}.auction.auctionStart`));
+          cachedBid.clientLatencyMillis = cachedBid.clientLatencyMillis || latencies.total;
+          cachedBid.httpLatencyMillis = cachedBid.httpLatencyMillis || latencies.net;
+        }
       });
       break;
     case BID_WON:
