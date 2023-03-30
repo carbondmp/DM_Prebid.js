@@ -157,13 +157,13 @@ function registerEngagement() {
 };
 
 function getConsentData(args) {
-  let consentData = {
-    gdpr_consent: '',
-    ccpa_consent: ''
-  };
-
   if (Array.isArray(args?.bidderRequests) && args.bidderRequests.length > 0) {
     let bidderRequest = args.bidderRequests[0];
+
+    let consentData = {
+      gdpr_consent: '',
+      ccpa_consent: ''
+    };
 
     if (bidderRequest?.gdprConsent?.consentString) {
       consentData.gdpr_consent = bidderRequest.gdprConsent.consentString;
@@ -172,9 +172,11 @@ function getConsentData(args) {
     if (bidderRequest?.uspConsent?.consentString) {
       consentData.ccpa_consent = bidderRequest.uspConsent.consentString;
     }
-  }
 
-  return consentData;
+    if (consentData.gdpr_consent != '' && consentData.ccpa_consent != '') {
+      return consentData;
+    }
+  }
 }
 
 function getExternalIds() {
