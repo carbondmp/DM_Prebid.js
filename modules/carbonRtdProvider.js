@@ -32,26 +32,31 @@ export function setLocalStorage(carbonData) {
 export function matchCustomTaxonomyRule (rule) {
   const contentText = window.top.document.body.innerText;
   if (rule.MatchType == 'any') {
-    for (let anyWord in rule.WordWeights) {
-      let anyRegex = RegExp('\\b' + anyWord + '\\b', 'i');
-      let anyResult = contentText.match(anyRegex);
+    let words = Object.keys(rule.WordWeights).join('|');
 
-      if (anyResult) {
-        return true;
-      }
+    let regex = RegExp('\\b' + words + '\\b', 'i');
+    let result = contentText.match(regex);
+
+    if (result) {
+      return true
     }
   } else if (rule.MatchType == 'minmatch') {
     let score = 0;
-    for (let minWord in rule.WordWeights) {
-      let minRegex = RegExp('\\b' + minWord + '\\b', 'gi');
-      let minResult = contentText.match(minRegex);
+    let words = Object.keys(rule.WordWeights).join('|');
 
-      if (minResult) {
-        score += (rule.WordWeights[minWord] * minResult.length);
-      }
+    let regex = RegExp('\\b' + words + '\\b', 'gi');
+    let result = contentText.match(regex);
 
-      if (score >= rule.MatchValue) {
-        return true;
+    if (result?.length) {
+      for (let match of result) {
+        let point = rule.WordWeights[match];
+        if (!isNaN(point)) {
+          score += point;
+        }
+
+        if (score >= rule.MatchValue) {
+          return true;
+        }
       }
     }
   }
