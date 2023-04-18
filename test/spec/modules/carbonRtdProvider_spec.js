@@ -247,6 +247,7 @@ describe('carbonRtdProvider', function() {
       let callbackStub = sinon.stub()
 
       storage.setDataInLocalStorage('carbon_ccuid', 'a7939741-8a3c-4476-9138-b3fb73edc885')
+      storage.setDataInLocalStorage('carbon_ct_expiration', Date.now() + 600000)
       setLocalStorage(targetingData)
 
       bidRequestHandler({}, callbackStub, moduleConfig, {})
