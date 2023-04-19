@@ -93,7 +93,7 @@ const resetConfs = () => {
       vendors: [],
       waitForAuction: true
     },
-    pbaBrowserLocation: 'clientBrowser'
+    pbaBrowserLocation: 'client.browser'
   }
 }
 resetConfs();
