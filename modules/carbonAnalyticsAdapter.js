@@ -225,7 +225,31 @@ function createBaseEngagementEvent(args) {
 
 function sendEngagementEvent(event, eventTrigger) {
   let reqUrl = `${analyticsHost}/${ANALYTICS_VERSION}/parent/${parentId}/engagement/trigger/${eventTrigger}`;
-  ajax(reqUrl, undefined,
+  ajax(reqUrl,
+    {
+      success: function (response, req) { // update the ID if we find a cross domain cookie
+        let userData = {};
+
+        try {
+          userData = JSON.parse(response);
+        } catch (e) {
+          logError('unable to parse API response');
+        }
+
+        if (userData?.update && userData?.id != '') {
+          if (storage.cookiesAreEnabled()) {
+            storage.setCookie(PROFILE_ID_COOKIE, userData.id, new Date(Date.now() + 89 * DAY_MS), 'Lax');
+          }
+
+          if (storage.localStorageIsEnabled()) {
+            storage.setDataInLocalStorage(PROFILE_ID_KEY, userData.id);
+          }
+        }
+      },
+      error: error => {
+        if (error !== '') logError(error);
+      }
+    },
     JSON.stringify(event),
     {
       contentType: 'application/json',
