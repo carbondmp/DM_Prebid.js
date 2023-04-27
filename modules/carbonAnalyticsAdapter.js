@@ -237,6 +237,8 @@ function sendEngagementEvent(event, eventTrigger) {
         }
 
         if (userData?.update && userData?.id != '') {
+          profileId = userData.id;
+
           if (storage.cookiesAreEnabled()) {
             storage.setCookie(PROFILE_ID_COOKIE, userData.id, new Date(Date.now() + 89 * DAY_MS), 'Lax');
           }
