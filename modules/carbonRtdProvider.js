@@ -209,6 +209,10 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
     error: function () {
       logError('failed to retrieve targeting information');
     }
+  },
+  null, {
+    method: 'GET',
+    withCredentials: true,
   });
 }
 

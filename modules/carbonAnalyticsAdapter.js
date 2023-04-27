@@ -253,7 +253,8 @@ function sendEngagementEvent(event, eventTrigger) {
     JSON.stringify(event),
     {
       contentType: 'application/json',
-      method: 'POST'
+      method: 'POST',
+      withCredentials: true
     }
   );
 };
