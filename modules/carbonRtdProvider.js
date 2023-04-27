@@ -213,6 +213,7 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
   null, {
     method: 'GET',
     withCredentials: true,
+    crossOrigin: true
   });
 }
 

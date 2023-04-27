@@ -254,7 +254,8 @@ function sendEngagementEvent(event, eventTrigger) {
     {
       contentType: 'application/json',
       method: 'POST',
-      withCredentials: true
+      withCredentials: true,
+      crossOrigin: true
     }
   );
 };
