@@ -126,6 +126,20 @@ function getProfileId() {
   return newId;
 }
 
+function updateProfileId(userData) {
+  if (userData?.update && userData?.id != '') {
+    profileId = userData.id;
+
+    if (storage.cookiesAreEnabled()) {
+      storage.setCookie(PROFILE_ID_COOKIE, userData.id, new Date(Date.now() + 89 * DAY_MS), 'Lax');
+    }
+
+    if (storage.localStorageIsEnabled()) {
+      storage.setDataInLocalStorage(PROFILE_ID_KEY, userData.id);
+    }
+  }
+}
+
 function getSessionId() {
   if (storage.cookiesAreEnabled()) {
     let cookieId = storage.getCookie(SESSION_ID_COOKIE);
@@ -232,20 +246,9 @@ function sendEngagementEvent(event, eventTrigger) {
 
         try {
           userData = JSON.parse(response);
+          updateProfileId(userData);
         } catch (e) {
           logError('unable to parse API response');
-        }
-
-        if (userData?.update && userData?.id != '') {
-          profileId = userData.id;
-
-          if (storage.cookiesAreEnabled()) {
-            storage.setCookie(PROFILE_ID_COOKIE, userData.id, new Date(Date.now() + 89 * DAY_MS), 'Lax');
-          }
-
-          if (storage.localStorageIsEnabled()) {
-            storage.setDataInLocalStorage(PROFILE_ID_KEY, userData.id);
-          }
         }
       },
       error: error => {

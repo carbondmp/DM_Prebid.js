@@ -36,7 +36,14 @@ export function setTaxonomyRuleExpiration() {
   storage.setDataInLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY, expiration);
 }
 
-export function matchCustomTaxonomyRule (rule) {
+export function updateProfileId(carbonData) {
+  let identity = carbonData?.profile?.identity;
+  if (identity?.update && identity?.id != '' && storage.localStorageIsEnabled()) {
+    storage.setDataInLocalStorage(PROFILE_ID_KEY, identity.id);
+  }
+}
+
+export function matchCustomTaxonomyRule(rule) {
   const contentText = window.top.document.body.innerText;
   if (rule.MatchType == 'any') {
     let words = Object.keys(rule.WordWeights).join('|');
@@ -200,6 +207,7 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
           setTaxonomyRuleExpiration();
         }
 
+        updateProfileId(carbonData);
         setPrebidConfig(carbonData);
         prepareGPTTargeting(carbonData);
         setLocalStorage(carbonData);

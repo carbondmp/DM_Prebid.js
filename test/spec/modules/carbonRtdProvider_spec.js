@@ -12,6 +12,10 @@ import { carbonSubmodule,
 
 const targetingData = {
   profile: {
+    identity: {
+      id: '7d40ac1d-e7d2-4979-90a1-6204b80d12f5',
+      update: true
+    },
     audiences: [
       '3049feb1-4c23-487c-a2f3-9437f65a782f',
       '93f8f5e6-6219-4c44-83d1-3e14b83b4177'
