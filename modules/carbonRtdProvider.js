@@ -22,7 +22,6 @@ const TAXONOMY_RULE_EXPIRATION_KEY = 'carbon_ct_expiration'
 let rtdHost = '';
 let parentId = '';
 let features = {};
-let taxonomyRuleTTL = 600000; // default value of 10 minutes, can be overriden by config
 
 export const storage = getStorageManager({ gvlid: CARBON_GVL_ID, moduleName: SUBMODULE_NAME })
 
@@ -31,8 +30,8 @@ export function setLocalStorage(carbonData) {
   storage.setDataInLocalStorage(STORAGE_KEY, data);
 }
 
-export function setTaxonomyRuleExpiration() {
-  let expiration = Date.now() + taxonomyRuleTTL;
+export function setTaxonomyRuleExpiration(customTaxonomyTTL) {
+  let expiration = Date.now() + customTaxonomyTTL;
   storage.setDataInLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY, expiration);
 }
 
@@ -203,8 +202,8 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
         // if custom taxonomy didn't expire use the existing data
         if (taxonomyRules?.length && carbonData?.context) {
           carbonData.context.customTaxonomy = taxonomyRules;
-        } else {
-          setTaxonomyRuleExpiration();
+        } else if (carbonData.context?.customTaxonomyTTL > 0) {
+          setTaxonomyRuleExpiration(carbonData.context?.customTaxonomyTTL);
         }
 
         updateProfileId(carbonData);
@@ -268,7 +267,6 @@ function init(moduleConfig, userConsent) {
     return false;
   }
 
-  taxonomyRuleTTL = moduleConfig?.params?.cacheTTL || taxonomyRuleTTL;
   features = moduleConfig?.params?.features || features;
 
   return true;

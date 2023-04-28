@@ -69,6 +69,7 @@ const targetingData = {
         }
       }
     ],
+    customTaxonomyTTL: 600000,
     dealIds: [
       'deal1',
       'deal2'
