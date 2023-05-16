@@ -80,6 +80,7 @@ carbonAdapter.enableAnalytics = function (config) {
     ttl: 60, // unit is seconds
     count: 0,
     id: generateUUID(),
+    startTime: Date.now(),
     timeLastEngage: Date.now()
   };
 
@@ -167,6 +168,7 @@ function registerEngagement() {
   }
 
   pageEngagement.count++;
+  pageEngagement.startTime = present;
   pageEngagement.id = generateUUID();
 };
 
@@ -221,12 +223,12 @@ function createBaseEngagementEvent(args) {
   event.engagement_id = pageEngagement.id;
   event.engagement_count = pageEngagement.count;
   event.engagement_ttl = pageEngagement.ttl;
+  event.start_time = pageEngagement.startTime;
+  event.end_time = Date.now();
 
   event.script_id = window.location.host;
   event.url = window.location.href;
   event.referrer = document.referrer || deepAccess(args, 'bidderRequests.0.refererInfo.page') || undefined;
-
-  event.received_at = Date.now();
 
   if (args?.bidderRequests) {
     event.consent = getConsentData(args);
