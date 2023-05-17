@@ -26,13 +26,17 @@ let features = {};
 export const storage = getStorageManager({ gvlid: CARBON_GVL_ID, moduleName: SUBMODULE_NAME })
 
 export function setLocalStorage(carbonData) {
-  let data = JSON.stringify(carbonData);
-  storage.setDataInLocalStorage(STORAGE_KEY, data);
+  if (storage.localStorageIsEnabled()) {
+    let data = JSON.stringify(carbonData);
+    storage.setDataInLocalStorage(STORAGE_KEY, data);
+  }
 }
 
 export function setTaxonomyRuleExpiration(customTaxonomyTTL) {
-  let expiration = Date.now() + customTaxonomyTTL;
-  storage.setDataInLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY, expiration);
+  if (storage.localStorageIsEnabled()) {
+    let expiration = Date.now() + customTaxonomyTTL;
+    storage.setDataInLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY, expiration);
+  }
 }
 
 export function updateProfileId(carbonData) {
@@ -182,7 +186,7 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
   reqUrl.searchParams.append('audience', (typeof features.enableAudience === 'undefined') ? true : features.enableAudience);
   reqUrl.searchParams.append('deal_ids', (typeof features.enableDealId === 'undefined') ? true : features.enableDealId);
 
-  // we only want to update custom taxonomy after expiration
+  // only request new taxonomy rules from server if no cached rules available
   if (taxonomyRules && taxonomyRules.length) {
     reqUrl.searchParams.append('custom_taxonomy', false);
   } else {
@@ -233,13 +237,15 @@ export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
       prepareGPTTargeting(carbonData);
     }
 
+    // check if custom taxonomy rules have expired
     let updateTaxonomyRules = true;
-
     let taxonomyRuleExpiration = storage.getDataFromLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY);
+
     if (taxonomyRuleExpiration && !isNaN(taxonomyRuleExpiration)) {
       updateTaxonomyRules = taxonomyRuleExpiration >= Date.now();
     }
 
+    // use existing cached custom taxonomy rules if not expired
     if (!updateTaxonomyRules && carbonData?.context?.customTaxonomy?.length) {
       updateRealTimeDataAsync(callback, carbonData.context.customTaxonomy);
     } else {
