@@ -12,6 +12,10 @@ import { carbonSubmodule,
 
 const targetingData = {
   profile: {
+    identity: {
+      id: '7d40ac1d-e7d2-4979-90a1-6204b80d12f5',
+      update: true
+    },
     audiences: [
       '3049feb1-4c23-487c-a2f3-9437f65a782f',
       '93f8f5e6-6219-4c44-83d1-3e14b83b4177'
@@ -65,6 +69,7 @@ const targetingData = {
         }
       }
     ],
+    customTaxonomyTTL: 600000,
     dealIds: [
       'deal1',
       'deal2'
@@ -247,6 +252,7 @@ describe('carbonRtdProvider', function() {
       let callbackStub = sinon.stub()
 
       storage.setDataInLocalStorage('carbon_ccuid', 'a7939741-8a3c-4476-9138-b3fb73edc885')
+      storage.setDataInLocalStorage('carbon_ct_expiration', Date.now() + 600000)
       setLocalStorage(targetingData)
 
       bidRequestHandler({}, callbackStub, moduleConfig, {})

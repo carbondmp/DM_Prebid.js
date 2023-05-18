@@ -17,6 +17,7 @@ const CARBON_GVL_ID = 493;
 const MODULE_VERSION = 'v1.0'
 const STORAGE_KEY = 'carbon_data'
 const PROFILE_ID_KEY = 'carbon_ccuid'
+const TAXONOMY_RULE_EXPIRATION_KEY = 'carbon_ct_expiration'
 
 let rtdHost = '';
 let parentId = '';
@@ -25,11 +26,27 @@ let features = {};
 export const storage = getStorageManager({ gvlid: CARBON_GVL_ID, moduleName: SUBMODULE_NAME })
 
 export function setLocalStorage(carbonData) {
-  let data = JSON.stringify(carbonData);
-  storage.setDataInLocalStorage(STORAGE_KEY, data);
+  if (storage.localStorageIsEnabled()) {
+    let data = JSON.stringify(carbonData);
+    storage.setDataInLocalStorage(STORAGE_KEY, data);
+  }
 }
 
-export function matchCustomTaxonomyRule (rule) {
+export function setTaxonomyRuleExpiration(customTaxonomyTTL) {
+  if (storage.localStorageIsEnabled()) {
+    let expiration = Date.now() + customTaxonomyTTL;
+    storage.setDataInLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY, expiration);
+  }
+}
+
+export function updateProfileId(carbonData) {
+  let identity = carbonData?.profile?.identity;
+  if (identity?.update && identity?.id != '' && storage.localStorageIsEnabled()) {
+    storage.setDataInLocalStorage(PROFILE_ID_KEY, identity.id);
+  }
+}
+
+export function matchCustomTaxonomyRule(rule) {
   const contentText = window.top.document.body.innerText;
   if (rule.MatchType == 'any') {
     let words = Object.keys(rule.WordWeights).join('|');
@@ -140,7 +157,7 @@ export function setPrebidConfig(carbonData) {
   sourceConfig.mergeConfig({ortb2: ortbData});
 }
 
-export function updateRealTimeDataAsync(callback, userConsent) {
+export function updateRealTimeDataAsync(callback, taxonomyRules) {
   let doc = window.top.document;
   let pageUrl = `${doc.location.protocol}//${doc.location.host}${doc.location.pathname}`;
 
@@ -165,20 +182,15 @@ export function updateRealTimeDataAsync(callback, userConsent) {
     }
   }
 
-  if (features?.enableContext !== undefined) {
-    reqUrl.searchParams.append('context', features.enableContext);
-  }
+  reqUrl.searchParams.append('context', (typeof features.enableContext === 'undefined') ? true : features.enableContext);
+  reqUrl.searchParams.append('audience', (typeof features.enableAudience === 'undefined') ? true : features.enableAudience);
+  reqUrl.searchParams.append('deal_ids', (typeof features.enableDealId === 'undefined') ? true : features.enableDealId);
 
-  if (features?.enableAudience !== undefined) {
-    reqUrl.searchParams.append('audience', features.enableAudience);
-  }
-
-  if (features?.enableCustomTaxonomy !== undefined) {
-    reqUrl.searchParams.append('custom_taxonomy', features.enableCustomTaxonomy);
-  }
-
-  if (features?.enableDealId !== undefined) {
-    reqUrl.searchParams.append('deal_ids', features.enableDealId);
+  // only request new taxonomy rules from server if no cached rules available
+  if (taxonomyRules && taxonomyRules.length) {
+    reqUrl.searchParams.append('custom_taxonomy', false);
+  } else {
+    reqUrl.searchParams.append('custom_taxonomy', (typeof features.enableCustomTaxonomy === 'undefined') ? true : features.enableCustomTaxonomy);
   }
 
   ajax(reqUrl, {
@@ -191,6 +203,14 @@ export function updateRealTimeDataAsync(callback, userConsent) {
           logError('unable to parse API response');
         }
 
+        // if custom taxonomy didn't expire use the existing data
+        if (taxonomyRules?.length && carbonData?.context) {
+          carbonData.context.customTaxonomy = taxonomyRules;
+        } else if (carbonData.context?.customTaxonomyTTL > 0) {
+          setTaxonomyRuleExpiration(carbonData.context?.customTaxonomyTTL);
+        }
+
+        updateProfileId(carbonData);
         setPrebidConfig(carbonData);
         prepareGPTTargeting(carbonData);
         setLocalStorage(carbonData);
@@ -200,6 +220,11 @@ export function updateRealTimeDataAsync(callback, userConsent) {
     error: function () {
       logError('failed to retrieve targeting information');
     }
+  },
+  null, {
+    method: 'GET',
+    withCredentials: true,
+    crossOrigin: true
   });
 }
 
@@ -211,12 +236,26 @@ export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
       setPrebidConfig(carbonData);
       prepareGPTTargeting(carbonData);
     }
+
+    // check if custom taxonomy rules have expired
+    let updateTaxonomyRules = true;
+    let taxonomyRuleExpiration = storage.getDataFromLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY);
+
+    if (taxonomyRuleExpiration && !isNaN(taxonomyRuleExpiration)) {
+      updateTaxonomyRules = taxonomyRuleExpiration >= Date.now();
+    }
+
+    // use existing cached custom taxonomy rules if not expired
+    if (!updateTaxonomyRules && carbonData?.context?.customTaxonomy?.length) {
+      updateRealTimeDataAsync(callback, carbonData.context.customTaxonomy);
+    } else {
+      updateRealTimeDataAsync(callback);
+    }
+
+    callback();
   } catch (err) {
     logError(err);
   }
-
-  updateRealTimeDataAsync(callback, userConsent);
-  callback();
 }
 
 function init(moduleConfig, userConsent) {
@@ -234,7 +273,7 @@ function init(moduleConfig, userConsent) {
     return false;
   }
 
-  features = moduleConfig?.params?.features || {};
+  features = moduleConfig?.params?.features || features;
 
   return true;
 }

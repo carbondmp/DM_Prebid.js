@@ -80,6 +80,7 @@ carbonAdapter.enableAnalytics = function (config) {
     ttl: 60, // unit is seconds
     count: 0,
     id: generateUUID(),
+    startTime: Date.now(),
     timeLastEngage: Date.now()
   };
 
@@ -126,6 +127,20 @@ function getProfileId() {
   return newId;
 }
 
+function updateProfileId(userData) {
+  if (userData?.update && userData?.id != '') {
+    profileId = userData.id;
+
+    if (storage.cookiesAreEnabled()) {
+      storage.setCookie(PROFILE_ID_COOKIE, userData.id, new Date(Date.now() + 89 * DAY_MS), 'Lax');
+    }
+
+    if (storage.localStorageIsEnabled()) {
+      storage.setDataInLocalStorage(PROFILE_ID_KEY, userData.id);
+    }
+  }
+}
+
 function getSessionId() {
   if (storage.cookiesAreEnabled()) {
     let cookieId = storage.getCookie(SESSION_ID_COOKIE);
@@ -153,6 +168,7 @@ function registerEngagement() {
   }
 
   pageEngagement.count++;
+  pageEngagement.startTime = present;
   pageEngagement.id = generateUUID();
 };
 
@@ -207,12 +223,12 @@ function createBaseEngagementEvent(args) {
   event.engagement_id = pageEngagement.id;
   event.engagement_count = pageEngagement.count;
   event.engagement_ttl = pageEngagement.ttl;
+  event.start_time = pageEngagement.startTime;
+  event.end_time = Date.now();
 
   event.script_id = window.location.host;
   event.url = window.location.href;
   event.referrer = document.referrer || deepAccess(args, 'bidderRequests.0.refererInfo.page') || undefined;
-
-  event.received_at = Date.now();
 
   if (args?.bidderRequests) {
     event.consent = getConsentData(args);
@@ -225,11 +241,28 @@ function createBaseEngagementEvent(args) {
 
 function sendEngagementEvent(event, eventTrigger) {
   let reqUrl = `${analyticsHost}/${ANALYTICS_VERSION}/parent/${parentId}/engagement/trigger/${eventTrigger}`;
-  ajax(reqUrl, undefined,
+  ajax(reqUrl,
+    {
+      success: function (response, req) { // update the ID if we find a cross domain cookie
+        let userData = {};
+
+        try {
+          userData = JSON.parse(response);
+          updateProfileId(userData);
+        } catch (e) {
+          logError('unable to parse API response');
+        }
+      },
+      error: error => {
+        if (error !== '') logError(error);
+      }
+    },
     JSON.stringify(event),
     {
       contentType: 'application/json',
-      method: 'POST'
+      method: 'POST',
+      withCredentials: true,
+      crossOrigin: true
     }
   );
 };
