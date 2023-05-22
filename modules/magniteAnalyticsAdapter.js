@@ -892,9 +892,7 @@ magniteAdapter.track = ({ eventType, args }) => {
             code: 'request-error'
           };
       }
-      const latencies = getLatencies(args, auctionEntry.auctionStart);
-      bid.clientLatencyMillis = latencies.total;
-      bid.httpLatencyMillis = latencies.net;
+      bid.clientLatencyMillis = args.timeToRespond || args.metrics.getMetrics()['adapter.client.total'];
       bid.bidResponse = parseBidResponse(args, bid.bidResponse);
 
       // if pbs gave us back a bidId, we need to use it and update our bidId to PBA
@@ -907,7 +905,6 @@ magniteAdapter.track = ({ eventType, args }) => {
       handleNonBidEvent(args);
       break;
     case BIDDER_DONE:
-      logInfo(`BOBBY: Auction: ${args.auctionId} Bidder: ${args.bidderCode} - ${Date.now() - cache.auctions[args.auctionId].auction.auctionStart}`);
       const serverError = deepAccess(args, 'serverErrors.0');
       const serverResponseTimeMs = args.serverResponseTimeMs;
       args.bids.forEach(bid => {
@@ -927,11 +924,10 @@ magniteAdapter.track = ({ eventType, args }) => {
         }
 
         // set client latency if not done yet
-        if (!cachedBid.clientLatencyMillis || !cachedBid.httpLatencyMillis) {
-          const latencies = getLatencies(bid, deepAccess(cache, `auctions.${args.auctionId}.auction.auctionStart`));
-          cachedBid.clientLatencyMillis = cachedBid.clientLatencyMillis || latencies.total;
-          cachedBid.httpLatencyMillis = cachedBid.httpLatencyMillis || latencies.net;
+        if (!cachedBid.clientLatencyMillis) {
+          cachedBid.clientLatencyMillis = bid.metrics.getMetrics()['adapter.client.total'];
         }
+        cachedBid.httpLatency = bid.metrics.getMetrics()['adapter.client.net'];
       });
       break;
     case BID_WON:
