@@ -708,9 +708,9 @@ const getLatencies = (args, auctionStart) => {
     const metrics = args.metrics.getMetrics();
     const src = args.src || args.source;
     return {
-      total: parseInt(metrics[`adapter.${src}.total`]),
+      total: metrics[`adapter.${src}.total`],
       // If it is array, get slowest
-      net: parseInt(Array.isArray(metrics[`adapter.${src}.net`]) ? metrics[`adapter.${src}.net`][metrics[`adapter.${src}.net`].length - 1] : metrics[`adapter.${src}.net`])
+      net: Array.isArray(metrics[`adapter.${src}.net`]) ? metrics[`adapter.${src}.net`][metrics[`adapter.${src}.net`].length - 1] : metrics[`adapter.${src}.net`]
     }
   } catch (error) {
     // default to old way if not able to get better ones
@@ -892,7 +892,9 @@ magniteAdapter.track = ({ eventType, args }) => {
             code: 'request-error'
           };
       }
-      bid.clientLatencyMillis = args.timeToRespond || parseInt(args.metrics.getMetrics()['adapter.client.total']);
+      const latencies = getLatencies(args, auctionEntry.auctionStart);
+      bid.clientLatencyMillis = latencies.total;
+      bid.httpLatencyMillis = latencies.net;
       bid.bidResponse = parseBidResponse(args, bid.bidResponse);
 
       // if pbs gave us back a bidId, we need to use it and update our bidId to PBA
@@ -924,18 +926,9 @@ magniteAdapter.track = ({ eventType, args }) => {
         }
 
         // set client latency if not done yet
-        if (!cachedBid.clientLatencyMillis) {
-          try {
-            cachedBid.clientLatencyMillis = parseInt(bid.metrics.getMetrics()[`adapter.${bid.src}.total`]);
-          } catch (error) {
-            cachedBid.clientLatencyMillis = Date.now() - cache.auctions[args.auctionId].auction.auctionStart;
-          }
-        }
-        try {
-          cachedBid.httpLatency = parseInt(bid.metrics.getMetrics()[`adapter.${bid.src}.net`][0]);
-        } catch (error) {
-          logInfo(`${MODULE_NAME}: unable to get http latency for bid`, bid);
-        }
+        const latencies = getLatencies(args, deepAccess(cache, `auctions.${args.auctionId}.auction.auctionStart`));
+        bid.clientLatencyMillis = cachedBid.clientLatencyMillis || latencies.total;
+        bid.httpLatencyMillis = cachedBid.clientLatencyMillis || latencies.net;
       });
       break;
     case BID_WON:
