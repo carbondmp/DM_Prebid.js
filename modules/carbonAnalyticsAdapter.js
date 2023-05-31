@@ -5,6 +5,7 @@ import {getGlobal} from '../src/prebidGlobal.js';
 import adapterManager from '../src/adapterManager.js';
 import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
 import CONSTANTS from '../src/constants.json';
+import { MODULE_TYPE_ANALYTICS } from '../src/activities/modules.js';
 
 const CARBON_GVL_ID = 493;
 const ANALYTICS_VERSION = 'v1.0';
@@ -17,7 +18,7 @@ const ANALYTICS_TYPE = 'endpoint';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 
-export const storage = getStorageManager({gvlid: CARBON_GVL_ID, moduleName: 'carbon'});
+export const storage = getStorageManager({gvlid: CARBON_GVL_ID, moduleType: MODULE_TYPE_ANALYTICS, moduleName: 'carbon'});
 
 let analyticsHost = '';
 let pageViewId = '';

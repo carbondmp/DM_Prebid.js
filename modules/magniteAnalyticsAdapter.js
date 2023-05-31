@@ -320,7 +320,6 @@ const addFloorData = floorData => {
   }
 }
 
-
 const getTopLevelDetails = () => {
   let payload = {
     channel: 'web',

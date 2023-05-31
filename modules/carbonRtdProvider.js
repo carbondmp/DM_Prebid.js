@@ -11,7 +11,7 @@ import {getGlobal} from '../src/prebidGlobal.js';
 import { logError, isGptPubadsDefined, generateUUID } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 import { config as sourceConfig } from '../src/config.js';
-
+import { MODULE_TYPE_RTD } from '../src/activities/modules.js';
 const SUBMODULE_NAME = 'carbon'
 const CARBON_GVL_ID = 493;
 const MODULE_VERSION = 'v1.0'
@@ -23,7 +23,7 @@ let rtdHost = '';
 let parentId = '';
 let features = {};
 
-export const storage = getStorageManager({ gvlid: CARBON_GVL_ID, moduleName: SUBMODULE_NAME })
+export const storage = getStorageManager({ gvlid: CARBON_GVL_ID, moduleType: MODULE_TYPE_RTD, moduleName: SUBMODULE_NAME })
 
 export function setLocalStorage(carbonData) {
   if (storage.localStorageIsEnabled()) {
