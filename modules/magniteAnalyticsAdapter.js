@@ -33,6 +33,7 @@ const LAST_SEEN_EXPIRE_TIME = 1800000; // 30 mins
 const END_EXPIRE_TIME = 21600000; // 6 hours
 const MODULE_NAME = 'Magnite Analytics';
 const BID_REJECTED_IPF = 'rejected-ipf';
+const DEFAULT_INTEGRATION = 'pbjs';
 
 // List of known rubicon aliases
 // This gets updated on auction init to account for any custom aliases present
@@ -45,6 +46,12 @@ const pbsErrorMap = {
   4: 'request-error',
   999: 'generic-error'
 }
+
+let browser;
+let pageReferer;
+let auctionCount = 0; // count of auctions on page
+let accountId;
+let endpoint;
 
 let prebidGlobal = getGlobal();
 const {
@@ -111,8 +118,6 @@ config.getConfig('s2sConfig', ({ s2sConfig }) => {
   serverConfig = s2sConfig;
 });
 
-const DEFAULT_INTEGRATION = 'pbjs';
-
 const adUnitIsOnlyInstream = adUnit => {
   return adUnit.mediaTypes && Object.keys(adUnit.mediaTypes).length === 1 && deepAccess(adUnit, 'mediaTypes.video.context') === 'instream';
 }
@@ -173,6 +178,11 @@ const sendAuctionEvent = (auctionId, trigger) => {
 
 const formatAuction = auction => {
   const auctionEvent = deepClone(auction);
+
+  // Gather dm web vitals if this is the first auction
+  if (auctionEvent.auctionCount === 1) {
+    auctionEvent.dmWebVitals = prebidGlobal?.rp?.getDmWebVitals?.(true);
+  }
 
   auctionEvent.samplingFactor = 1;
 
@@ -310,7 +320,6 @@ const addFloorData = floorData => {
   }
 }
 
-let pageReferer;
 
 const getTopLevelDetails = () => {
   let payload = {
@@ -642,9 +651,6 @@ export const detectBrowserFromUa = userAgent => {
   return 'OTHER';
 }
 
-let accountId;
-let endpoint;
-
 let magniteAdapter = adapter({ analyticsType: 'endpoint' });
 
 magniteAdapter.originEnableAnalytics = magniteAdapter.enableAnalytics;
@@ -688,6 +694,7 @@ magniteAdapter.disableAnalytics = function () {
   magniteAdapter._oldEnable = enableMgniAnalytics;
   endpoint = undefined;
   accountId = undefined;
+  auctionCount = 0;
   resetConfs();
   magniteAdapter.originDisableAnalytics();
 };
@@ -722,10 +729,10 @@ const getLatencies = (args, auctionStart) => {
   }
 }
 
-let browser;
 magniteAdapter.track = ({ eventType, args }) => {
   switch (eventType) {
     case AUCTION_INIT:
+      auctionCount += 1;
       // Update session
       cache.sessionData = storage.localStorageIsEnabled() && updateRpaCookie();
       // set the rubicon aliases
@@ -741,6 +748,7 @@ magniteAdapter.track = ({ eventType, args }) => {
         'timeout as clientTimeoutMillis',
       ]);
       auctionData.accountId = accountId;
+      auctionData.auctionCount = auctionCount;
 
       // get browser
       if (!browser) {

@@ -234,9 +234,12 @@ const ANALYTICS_MESSAGE = {
     'start': 1519767013781,
     'expires': 1519788613781
   },
-  'clientBrowser': 'Chrome',
+  'client': {
+    'browser': 'Chrome',
+  },
   'auctions': [
     {
+      'auctionCount': 1,
       'auctionId': '99785e47-a7c8-4c8a-ae05-ef1c717a4b4d',
       'auctionStart': 1658868383741,
       'samplingFactor': 1,
@@ -441,7 +444,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
-        pbaBrowserLocation: 'clientBrowser',
+        pbaBrowserLocation: 'client.browser',
         fpkvs: {
           source: 'fb'
         },
@@ -469,7 +472,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
-        pbaBrowserLocation: 'clientBrowser',
+        pbaBrowserLocation: 'client.browser',
         fpkvs: {
           source: 'fb',
           link: 'email'
@@ -498,7 +501,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
-        pbaBrowserLocation: 'clientBrowser',
+        pbaBrowserLocation: 'client.browser',
         fpkvs: {
           link: 'iMessage',
           source: 'twitter'
@@ -579,6 +582,19 @@ describe('magnite analytics adapter', function () {
         'ix',
         'appnexus'
       ]);
+    });
+
+    it('should pass along dmWebVitals if available', function () {
+      let obj = { cls: 0.0948, fid: 25, lcp: 4386 };
+      getGlobal().rp = {
+        getDmWebVitals: () => obj
+      }
+
+      performStandardAuction();
+
+      getGlobal().rp = undefined;
+      let message = JSON.parse(server.requests[0].requestBody);
+      expect(message.auctions[0].dmWebVitals).to.deep.equal(obj);
     });
 
     [
