@@ -3,7 +3,8 @@ import magniteAdapter, {
   getHostNameFromReferer,
   storage,
   rubiConf,
-  detectBrowserFromUa
+  detectBrowserFromUa,
+  handleUnloadEvent
 } from '../../../modules/magniteAnalyticsAdapter.js';
 import CONSTANTS from 'src/constants.json';
 import { config } from 'src/config.js';
@@ -537,7 +538,10 @@ describe('magnite analytics adapter', function () {
       }
     }
 
+    let beaconStub, cwvObj;
+
     beforeEach(function () {
+      beaconStub = sinon.stub(navigator, 'sendBeacon');
       magniteAdapter.enableAnalytics({
         options: {
           endpoint: '//localhost:9999/event',
@@ -545,6 +549,14 @@ describe('magnite analytics adapter', function () {
         }
       });
       config.setConfig({ rubicon: { updatePageView: true } });
+
+      cwvObj = { cls: 0.0948, fid: 25, lcp: 4386 };
+    });
+
+    afterEach(function () {
+      beaconStub.restore();
+      magniteAdapter.disableAnalytics();
+      getGlobal().rp = undefined;
     });
 
     it('should build a batched message from prebid events', function () {
@@ -585,16 +597,43 @@ describe('magnite analytics adapter', function () {
     });
 
     it('should pass along dmWebVitals if available', function () {
-      let obj = { cls: 0.0948, fid: 25, lcp: 4386 };
       getGlobal().rp = {
-        getDmWebVitals: () => obj
+        getDmWebVitals: () => cwvObj
       }
-
       performStandardAuction();
-
-      getGlobal().rp = undefined;
       let message = JSON.parse(server.requests[0].requestBody);
-      expect(message.auctions[0].dmWebVitals).to.deep.equal(obj);
+      expect(message.auctions[0].dmWebVitals).to.deep.equal(cwvObj);
+    });
+
+    it('should handle sending beacon if user leaves while events are pending', function () {
+      getGlobal().rp = {
+        getDmWebVitals: () => cwvObj
+      }
+      // run auction but have it NOT send message
+      performStandardAuction({ eventDelay: 1 })
+
+      // simulate unload
+      handleUnloadEvent();
+
+      // should be a message fired via navigator send beacon
+      expect(beaconStub.calledOnce).to.equal(true);
+      // first args should be the URL
+      expect(beaconStub.firstCall.args[0]).to.equal('//localhost:9999/event');
+
+      // second call is the payload
+      let message = JSON.parse(beaconStub.firstCall.args[1]);
+
+      // should have trigger to unload
+      expect(message.trigger).to.equal('unload');
+
+      // should have missed events counted and include dmWebVitals
+      expect(message.missedEvents).to.deep.equal({
+        accountId: 1001,
+        auctions: 1,
+        bidsWon: 1,
+        gamRenders: 1,
+        dmWebVitals: cwvObj
+      });
     });
 
     [
