@@ -1083,6 +1083,34 @@ describe('magnite analytics adapter', function () {
       });
     });
 
+    it('should send dm wrapper data if set', function () {
+      // Set the confs
+      config.setConfig({
+        rubicon: {
+          wrapperName: '1001_general',
+          wrapperFamily: 'general',
+          rule_name: 'desktop-magnite.com',
+          wrapperModels: ['some-cool-model']
+        }
+      });
+
+      // perform auction
+      performStandardAuction();
+
+      // should be one server call
+      expect(server.requests.length).to.equal(1);
+      let request = server.requests[0];
+      let message = JSON.parse(request.requestBody);
+
+      // should have wrapper data
+      expect(message.wrapper).to.deep.equal({
+        name: '1001_general',
+        family: 'general',
+        rule: 'desktop-magnite.com',
+        modelNames: ['some-cool-model']
+      });
+    });
+
     it('should send gam data if adunit has elementid ortb2 fields', function () {
       // update auction init mock to have the elementids in the adunit
       // and change adUnitCode to be hashes

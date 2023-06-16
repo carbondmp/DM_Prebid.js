@@ -356,7 +356,8 @@ const getTopLevelDetails = () => {
     payload.wrapper = {
       name: rubiConf.wrapperName,
       family: rubiConf.wrapperFamily,
-      rule: rubiConf.rule_name
+      rule: rubiConf.rule_name,
+      modelNames: rubiConf.wrapperModels
     }
   }
 
