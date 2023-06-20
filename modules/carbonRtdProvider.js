@@ -10,7 +10,6 @@ import { ajax } from '../src/ajax.js';
 import {getGlobal} from '../src/prebidGlobal.js';
 import { logError, isGptPubadsDefined, generateUUID } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
-import { config as sourceConfig } from '../src/config.js';
 
 const SUBMODULE_NAME = 'carbon'
 const CARBON_GVL_ID = 493;
@@ -116,47 +115,6 @@ export function setGPTTargeting(carbonData) {
   }
 }
 
-export function setPrebidConfig(carbonData) {
-  const ortbData = { user: {}, site: {} };
-
-  if (Array.isArray(carbonData?.profile?.audiences) && features?.audience?.pushOrtb) {
-    let userSegments = carbonData.profile.audiences.map(function (x) { return { id: x } });
-    ortbData.user.data = [{
-      name: 'www.ccgateway.net',
-      ext: { segtax: 507 }, // 507 Magnite Custom Audiences
-      segment: userSegments
-    }];
-  }
-
-  if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications) && features?.context?.pushOrtb) {
-    let contextSegments = carbonData.context.pageContext.contextualclassifications.map(function (x) {
-      if (x.type && x.type == 'iab_intent' && x.id) {
-        return { id: x.id };
-      }
-    }).filter(x => x !== undefined);
-    ortbData.site.content = ortbData.site.content || {};
-    ortbData.site.content.data = [{
-      name: 'www.ccgateway.net',
-      ext: { segtax: 2 },
-      segment: contextSegments
-    }];
-  }
-
-  if (Array.isArray(carbonData?.context?.customTaxonomy) && features?.customTaxonomy?.pushOrtb) {
-    ortbData.site.ext = ortbData.site.ext || {};
-    ortbData.site.ext.data = ortbData.site.ext.data || {};
-    ortbData.site.ext.data.customTaxonomy = matchCustomTaxonomy(carbonData.context.customTaxonomy);
-  }
-
-  if (Array.isArray(carbonData?.context?.dealIds) && features?.dealId?.pushOrtb) {
-    ortbData.site.ext = ortbData.site.ext || {};
-    ortbData.site.ext.data = ortbData.site.ext.data || {};
-    ortbData.site.ext.data.dealIds = carbonData.context.dealIds;
-  }
-
-  sourceConfig.mergeConfig({ortb2: ortbData});
-}
-
 export function updateRealTimeDataAsync(callback, taxonomyRules) {
   let doc = window.top.document;
   let pageUrl = `${doc.location.protocol}//${doc.location.host}${doc.location.pathname}`;
@@ -225,7 +183,6 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
         }
 
         updateProfileId(carbonData);
-        setPrebidConfig(carbonData);
         prepareGPTTargeting(carbonData);
         setLocalStorage(carbonData);
         callback();
@@ -247,7 +204,6 @@ export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
     const carbonData = JSON.parse(storage.getDataFromLocalStorage(STORAGE_KEY) || '{}')
 
     if (carbonData) {
-      setPrebidConfig(carbonData);
       prepareGPTTargeting(carbonData);
     }
 

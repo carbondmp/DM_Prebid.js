@@ -1,10 +1,8 @@
-import { config } from 'src/config.js'
 import * as ajax from 'src/ajax.js'
 import { carbonSubmodule,
   setLocalStorage,
   matchCustomTaxonomy,
   setGPTTargeting,
-  setPrebidConfig,
   updateRealTimeDataAsync,
   storage,
   bidRequestHandler
@@ -84,25 +82,21 @@ const moduleConfig = {
     features: {
       context: {
         active: true,
-        pushOrtb: true,
         pushGpt: true,
         limit: 0
       },
       audience: {
         active: true,
-        pushOrtb: true,
         pushGpt: true,
         limit: 0
       },
       customTaxonomy: {
         active: true,
-        pushOrtb: true,
         pushGpt: true,
         limit: 0
       },
       dealId: {
         active: true,
-        pushOrtb: true,
         pushGpt: true,
         limit: 0
       }
@@ -125,7 +119,6 @@ describe('carbonRtdProvider', function() {
     ajaxStub.restore()
     bodyStub.restore()
     window.googletag.pubads().clearTargeting()
-    config.resetConfig()
   })
 
   describe('carbonSubmodule', function () {
@@ -199,39 +192,6 @@ describe('carbonRtdProvider', function() {
     })
   })
 
-  describe('set ortb targeting', function() {
-    it('should set profile audience data for targeting', function() {
-      setPrebidConfig(targetingData)
-      expect(config.getConfig().ortb2.user.data).to.deep.include.members([{
-        name: 'www.ccgateway.net',
-        ext: { segtax: 507 },
-        segment: [{'id': '3049feb1-4c23-487c-a2f3-9437f65a782f'}, {'id': '93f8f5e6-6219-4c44-83d1-3e14b83b4177'}]
-      }])
-    })
-
-    it('should set page contextual data for targeting', function() {
-      setPrebidConfig(targetingData)
-      expect(config.getConfig().ortb2.site.content.data).to.deep.include.members([{
-        name: 'www.ccgateway.net',
-        ext: { segtax: 2 },
-        segment: [{'id': '269'}, {'id': '375'}]
-      }])
-    })
-
-    it('should set custom taxonomy rule matches for targeting', function() {
-      bodyStub.get(function() {
-        return 'unit test prebid match';
-      })
-      setPrebidConfig(targetingData)
-      expect(config.getConfig().ortb2.site.ext.data.customTaxonomy).to.deep.include.members(['c6bb65b3-ea0e-4c6e-881d-9b3bb1f8b49f', 'b099fc27-1d21-42d6-af06-781b416f0ac0'])
-    })
-
-    it('should set deal ids for targeting', function() {
-      setPrebidConfig(targetingData)
-      expect(config.getConfig().ortb2.site.ext.data.dealIds).to.deep.include.members(['deal1', 'deal2'])
-    })
-  })
-
   describe('update realtime data async request', function() {
     it('should make a request to the rtd server', function() {
       ajaxStub.callsFake(function() {
@@ -281,19 +241,6 @@ describe('carbonRtdProvider', function() {
       expect(window.googletag.pubads().getTargeting('carbon_segment')).to.deep.include.members(['3049feb1-4c23-487c-a2f3-9437f65a782f', '93f8f5e6-6219-4c44-83d1-3e14b83b4177'])
       expect(window.googletag.pubads().getTargeting('cc-iab-class-id')).to.deep.include.members(['269', '375'])
       expect(window.googletag.pubads().getTargeting('cc-custom-taxonomy')).to.deep.include.members(['c6bb65b3-ea0e-4c6e-881d-9b3bb1f8b49f', 'b099fc27-1d21-42d6-af06-781b416f0ac0'])
-
-      expect(config.getConfig().ortb2.user.data).to.deep.include.members([{
-        name: 'www.ccgateway.net',
-        ext: { segtax: 507 },
-        segment: [{'id': '3049feb1-4c23-487c-a2f3-9437f65a782f'}, {'id': '93f8f5e6-6219-4c44-83d1-3e14b83b4177'}]
-      }])
-      expect(config.getConfig().ortb2.site.content.data).to.deep.include.members([{
-        name: 'www.ccgateway.net',
-        ext: { segtax: 2 },
-        segment: [{'id': '269'}, {'id': '375'}]
-      }])
-      expect(config.getConfig().ortb2.site.ext.data.customTaxonomy).to.deep.include.members(['c6bb65b3-ea0e-4c6e-881d-9b3bb1f8b49f', 'b099fc27-1d21-42d6-af06-781b416f0ac0'])
-      expect(config.getConfig().ortb2.site.ext.data.dealIds).to.deep.include.members(['deal1', 'deal2'])
 
       expect(ajaxStub.calledOnce).to.equal(true)
       expect(requestUrl.pathname).to.equal('/v1.0/realtime/testId')
