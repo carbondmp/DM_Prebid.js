@@ -82,10 +82,30 @@ const moduleConfig = {
     parentId: 'testId',
     endpoint: 'http://test.example.com',
     features: {
-      enableContext: true,
-      enableAudience: true,
-      enableCustomTaxonomy: true,
-      enableDealId: true
+      context: {
+        active: true,
+        pushOrtb: true,
+        pushGpt: true,
+        limit: 0
+      },
+      audience: {
+        active: true,
+        pushOrtb: true,
+        pushGpt: true,
+        limit: 0
+      },
+      customTaxonomy: {
+        active: true,
+        pushOrtb: true,
+        pushGpt: true,
+        limit: 0
+      },
+      dealId: {
+        active: true,
+        pushOrtb: true,
+        pushGpt: true,
+        limit: 0
+      }
     }
   }
 }

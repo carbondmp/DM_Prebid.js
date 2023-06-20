@@ -97,11 +97,11 @@ export function prepareGPTTargeting(carbonData) {
 }
 
 export function setGPTTargeting(carbonData) {
-  if (Array.isArray(carbonData?.profile?.audiences)) {
+  if (Array.isArray(carbonData?.profile?.audiences) && features?.audience?.pushGpt) {
     window.googletag.pubads().setTargeting('carbon_segment', carbonData.profile.audiences);
   }
 
-  if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications)) {
+  if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications) && features?.context?.pushGpt) {
     let contextSegments = carbonData.context.pageContext.contextualclassifications.map(x => {
       if (x.type && x.type == 'iab_intent' && x.id) {
         return x.id;
@@ -110,7 +110,7 @@ export function setGPTTargeting(carbonData) {
     window.googletag.pubads().setTargeting('cc-iab-class-id', contextSegments);
   }
 
-  if (Array.isArray(carbonData?.context?.customTaxonomy)) {
+  if (Array.isArray(carbonData?.context?.customTaxonomy) && features?.customTaxonomy?.pushGpt) {
     let customTaxonomyResults = matchCustomTaxonomy(carbonData.context.customTaxonomy);
     window.googletag.pubads().setTargeting('cc-custom-taxonomy', customTaxonomyResults);
   }
@@ -119,7 +119,7 @@ export function setGPTTargeting(carbonData) {
 export function setPrebidConfig(carbonData) {
   const ortbData = { user: {}, site: {} };
 
-  if (Array.isArray(carbonData?.profile?.audiences)) {
+  if (Array.isArray(carbonData?.profile?.audiences) && features?.audience?.pushOrtb) {
     let userSegments = carbonData.profile.audiences.map(function (x) { return { id: x } });
     ortbData.user.data = [{
       name: 'www.ccgateway.net',
@@ -128,7 +128,7 @@ export function setPrebidConfig(carbonData) {
     }];
   }
 
-  if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications)) {
+  if (Array.isArray(carbonData?.context?.pageContext?.contextualclassifications) && features?.context?.pushOrtb) {
     let contextSegments = carbonData.context.pageContext.contextualclassifications.map(function (x) {
       if (x.type && x.type == 'iab_intent' && x.id) {
         return { id: x.id };
@@ -142,13 +142,13 @@ export function setPrebidConfig(carbonData) {
     }];
   }
 
-  if (Array.isArray(carbonData?.context?.customTaxonomy)) {
+  if (Array.isArray(carbonData?.context?.customTaxonomy) && features?.customTaxonomy?.pushOrtb) {
     ortbData.site.ext = ortbData.site.ext || {};
     ortbData.site.ext.data = ortbData.site.ext.data || {};
     ortbData.site.ext.data.customTaxonomy = matchCustomTaxonomy(carbonData.context.customTaxonomy);
   }
 
-  if (Array.isArray(carbonData?.context?.dealIds)) {
+  if (Array.isArray(carbonData?.context?.dealIds) && features?.dealId?.pushOrtb) {
     ortbData.site.ext = ortbData.site.ext || {};
     ortbData.site.ext.data = ortbData.site.ext.data || {};
     ortbData.site.ext.data.dealIds = carbonData.context.dealIds;
@@ -182,15 +182,29 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
     }
   }
 
-  reqUrl.searchParams.append('context', (typeof features.enableContext === 'undefined') ? true : features.enableContext);
-  reqUrl.searchParams.append('audience', (typeof features.enableAudience === 'undefined') ? true : features.enableAudience);
-  reqUrl.searchParams.append('deal_ids', (typeof features.enableDealId === 'undefined') ? true : features.enableDealId);
+  reqUrl.searchParams.append('context', (typeof features?.context?.active === 'undefined') ? true : features.context.active);
+  if (features?.context?.limit && features.context.limit > 0) {
+    reqUrl.searchParams.append('contextLimit', features.context.limit);
+  }
+
+  reqUrl.searchParams.append('audience', (typeof features?.audience?.active === 'undefined') ? true : features.audience.active);
+  if (features?.audience?.limit && features.audience.limit > 0) {
+    reqUrl.searchParams.append('audienceLimit', features.audience.limit);
+  }
+
+  reqUrl.searchParams.append('deal_ids', (typeof features?.dealId?.active === 'undefined') ? true : features.dealId.active);
+  if (features?.dealId?.limit && features.dealId.limit > 0) {
+    reqUrl.searchParams.append('dealIdLimit', features.dealId.limit);
+  }
 
   // only request new taxonomy rules from server if no cached rules available
   if (taxonomyRules && taxonomyRules.length) {
     reqUrl.searchParams.append('custom_taxonomy', false);
   } else {
-    reqUrl.searchParams.append('custom_taxonomy', (typeof features.enableCustomTaxonomy === 'undefined') ? true : features.enableCustomTaxonomy);
+    reqUrl.searchParams.append('custom_taxonomy', (typeof features?.customTaxonomy?.active === 'undefined') ? true : features.customTaxonomy.active);
+    if (features?.customTaxonomy?.limit && features.customTaxonomy.limit > 0) {
+      reqUrl.searchParams.append('customTaxonomy', features.customTaxonomy.limit);
+    }
   }
 
   ajax(reqUrl, {

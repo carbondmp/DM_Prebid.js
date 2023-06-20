@@ -240,31 +240,33 @@ function createBaseEngagementEvent(args) {
 }
 
 function sendEngagementEvent(event, eventTrigger) {
-  let reqUrl = `${analyticsHost}/${ANALYTICS_VERSION}/parent/${parentId}/engagement/trigger/${eventTrigger}`;
-  ajax(reqUrl,
-    {
-      success: function (response, req) { // update the ID if we find a cross domain cookie
-        let userData = {};
+  if (analyticsHost != '' && parentId != '') {
+    let reqUrl = `${analyticsHost}/${ANALYTICS_VERSION}/parent/${parentId}/engagement/trigger/${eventTrigger}`;
+    ajax(reqUrl,
+      {
+        success: function (response, req) { // update the ID if we find a cross domain cookie
+          let userData = {};
 
-        try {
-          userData = JSON.parse(response);
-          updateProfileId(userData);
-        } catch (e) {
-          logError('unable to parse API response');
+          try {
+            userData = JSON.parse(response);
+            updateProfileId(userData);
+          } catch (e) {
+            logError('unable to parse API response');
+          }
+        },
+        error: error => {
+          if (error !== '') logError(error);
         }
       },
-      error: error => {
-        if (error !== '') logError(error);
+      JSON.stringify(event),
+      {
+        contentType: 'application/json',
+        method: 'POST',
+        withCredentials: true,
+        crossOrigin: true
       }
-    },
-    JSON.stringify(event),
-    {
-      contentType: 'application/json',
-      method: 'POST',
-      withCredentials: true,
-      crossOrigin: true
-    }
-  );
+    );
+  }
 };
 
 adapterManager.registerAnalyticsAdapter({
