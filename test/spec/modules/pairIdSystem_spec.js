@@ -81,4 +81,17 @@ describe('pairId', function () {
     })
     expect(id).to.equal(undefined)
   })
+
+  it('should not get data from storage if local storage and cookies are disabled', function () {
+    sandbox.stub(storage, 'localStorageIsEnabled').returns(false);
+    sandbox.stub(storage, 'cookiesAreEnabled').returns(false);
+    let id = pairIdSubmodule.getId({
+      params: {
+        liveramp: {
+          storageKey: 'lr_pairId_custom'
+        }
+      }
+    })
+    expect(id).to.equal(undefined)
+  })
 });
