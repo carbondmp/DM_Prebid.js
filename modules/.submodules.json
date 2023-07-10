@@ -84,6 +84,15 @@
     "videoModule": [
       "jwplayerVideoProvider",
       "videojsVideoProvider"
+    ],
+    "ppi": [
+      "cacheDestination",
+      "callbackDestination",
+      "gptDestination",
+      "pageDestination",
+      "auctionSource",
+      "cacheSource",
+      "aup"
     ]
   }
 }
