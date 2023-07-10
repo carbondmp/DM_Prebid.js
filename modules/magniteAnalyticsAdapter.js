@@ -33,6 +33,7 @@ const LAST_SEEN_EXPIRE_TIME = 1800000; // 30 mins
 const END_EXPIRE_TIME = 21600000; // 6 hours
 const MODULE_NAME = 'Magnite Analytics';
 const BID_REJECTED_IPF = 'rejected-ipf';
+const DEFAULT_INTEGRATION = 'pbjs';
 
 // List of known rubicon aliases
 // This gets updated on auction init to account for any custom aliases present
@@ -45,6 +46,13 @@ const pbsErrorMap = {
   4: 'request-error',
   999: 'generic-error'
 }
+
+let browser;
+let pageReferer;
+let auctionCount = 0; // count of auctions on page
+let accountId;
+let endpoint;
+let sentWebVitals = false;
 
 let prebidGlobal = getGlobal();
 const {
@@ -92,7 +100,8 @@ const resetConfs = () => {
       enabled: false,
       vendors: [],
       waitForAuction: true
-    }
+    },
+    pbaBrowserLocation: 'client.browser'
   }
 }
 resetConfs();
@@ -109,8 +118,6 @@ let serverConfig;
 config.getConfig('s2sConfig', ({ s2sConfig }) => {
   serverConfig = s2sConfig;
 });
-
-const DEFAULT_INTEGRATION = 'pbjs';
 
 const adUnitIsOnlyInstream = adUnit => {
   return adUnit.mediaTypes && Object.keys(adUnit.mediaTypes).length === 1 && deepAccess(adUnit, 'mediaTypes.video.context') === 'instream';
@@ -143,13 +150,24 @@ const addEventToQueue = (event, auctionId, eventName) => {
   }
 }
 
-const sendEvent = payload => {
+const sendEvent = (payload, isUnload = false) => {
+  // endpoint may not be available yet skip if not
+  const url = rubiConf.analyticsEndpoint || endpoint;
+  if (!url) {
+    logWarn(`${MODULE_NAME}: Endpoint not initialized, skipping sending event`, payload);
+    return;
+  }
   const event = {
     ...getTopLevelDetails(),
     ...payload
   }
+  if (isUnload) {
+    // Using sendBeacon as it is quicker and more likely to not be cancelled as unload happens
+    navigator.sendBeacon(url, JSON.stringify(event));
+    return;
+  }
   ajax(
-    endpoint,
+    url,
     null,
     JSON.stringify(event),
     {
@@ -172,6 +190,12 @@ const sendAuctionEvent = (auctionId, trigger) => {
 
 const formatAuction = auction => {
   const auctionEvent = deepClone(auction);
+
+  // Gather dm web vitals if this is the first auction
+  if (auctionEvent.auctionCount === 1) {
+    auctionEvent.dmWebVitals = prebidGlobal?.rp?.getDmWebVitals?.(true);
+    sentWebVitals = true;
+  }
 
   auctionEvent.samplingFactor = 1;
 
@@ -309,8 +333,6 @@ const addFloorData = floorData => {
   }
 }
 
-let pageReferer;
-
 const getTopLevelDetails = () => {
   let payload = {
     channel: 'web',
@@ -334,7 +356,8 @@ const getTopLevelDetails = () => {
     payload.wrapper = {
       name: rubiConf.wrapperName,
       family: rubiConf.wrapperFamily,
-      rule: rubiConf.rule_name
+      rule: rubiConf.rule_name,
+      modelNames: rubiConf.wrapperModels
     }
   }
 
@@ -641,9 +664,6 @@ export const detectBrowserFromUa = userAgent => {
   return 'OTHER';
 }
 
-let accountId;
-let endpoint;
-
 let magniteAdapter = adapter({ analyticsType: 'endpoint' });
 
 magniteAdapter.originEnableAnalytics = magniteAdapter.enableAnalytics;
@@ -679,6 +699,51 @@ const handleBidWon = args => {
   addEventToQueue({ bidsWon: [bidWon] }, bidWon.renderAuctionId, 'bidWon');
 }
 
+const generateCountOfEvents = (missedEvents, pendingEvents) => {
+  Object.keys(pendingEvents).forEach(event => {
+    if (Array.isArray(pendingEvents[event]) && pendingEvents[event].length) {
+      missedEvents[event] = pendingEvents[event].length;
+    }
+  })
+}
+
+export const handleUnloadEvent = () => {
+  // Send auction stuff
+  logInfo(`${MODULE_NAME}: Before Unload`);
+  let missedEvents = {};
+
+  // Loop through each auction to count how many events are pending
+  Object.keys(cache.auctions).forEach(aid => {
+    if (cache.auctions[aid].sent) return;
+    missedEvents.auctions = missedEvents.auctions || 0;
+    missedEvents.auctions += 1;
+
+    // Count the number of events that are pending for that auction
+    if (cache.auctions[aid].pendingEvents && Object.keys(cache.auctions[aid].pendingEvents).length) {
+      generateCountOfEvents(missedEvents, cache.auctions[aid].pendingEvents);
+    }
+    logInfo(`${MODULE_NAME}: Auction ${aid} not sent!`);
+  });
+
+  // count any events pending not assigned to an auction
+  generateCountOfEvents(missedEvents, cache.pendingEvents);
+
+  // if we have not sent dmWebVitals try and get them
+  const dmVitals = !sentWebVitals && prebidGlobal?.rp?.getDmWebVitals?.(false);
+  if (typeof dmVitals === 'object' && Object.keys(dmVitals).length) {
+    missedEvents.dmWebVitals = dmVitals;
+  }
+
+  // If there are any missing events, send em!
+  if (Object.keys(missedEvents).length) {
+    missedEvents.accountId = accountId;
+    sendEvent({ missedEvents, trigger: 'unload' }, true);
+  }
+}
+
+// If user is leaving try and send some data to PBA
+window.addEventListener('beforeunload', handleUnloadEvent);
+
 magniteAdapter.enableAnalytics = enableMgniAnalytics;
 
 magniteAdapter.originDisableAnalytics = magniteAdapter.disableAnalytics;
@@ -687,6 +752,8 @@ magniteAdapter.disableAnalytics = function () {
   magniteAdapter._oldEnable = enableMgniAnalytics;
   endpoint = undefined;
   accountId = undefined;
+  auctionCount = 0;
+  sentWebVitals = false;
   resetConfs();
   magniteAdapter.originDisableAnalytics();
 };
@@ -721,10 +788,10 @@ const getLatencies = (args, auctionStart) => {
   }
 }
 
-let browser;
 magniteAdapter.track = ({ eventType, args }) => {
   switch (eventType) {
     case AUCTION_INIT:
+      auctionCount += 1;
       // Update session
       cache.sessionData = storage.localStorageIsEnabled() && updateRpaCookie();
       // set the rubicon aliases
@@ -740,6 +807,7 @@ magniteAdapter.track = ({ eventType, args }) => {
         'timeout as clientTimeoutMillis',
       ]);
       auctionData.accountId = accountId;
+      auctionData.auctionCount = auctionCount;
 
       // get browser
       if (!browser) {
