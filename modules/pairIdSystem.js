@@ -6,9 +6,9 @@
  */
 
 import { submodule } from '../src/hook.js';
-import { getStorageManager } from '../src/storageManager.js'
+import {getStorageManager} from '../src/storageManager.js'
 import { logInfo } from '../src/utils.js';
-import { MODULE_TYPE_UID } from '../src/activities/modules.js';
+import {MODULE_TYPE_UID} from '../src/activities/modules.js';
 
 const MODULE_NAME = 'pairId';
 const PAIR_ID_KEY = 'pairId';
@@ -32,11 +32,16 @@ export const pairIdSubmodule = {
   */
   name: MODULE_NAME,
   /**
-   * decode the stored id value for passing to bid requests
-   * @function
-   * @param { string | undefined } value
-   * @returns {{pairId:string} | undefined }
-   */
+  * used to specify vendor id
+  * @type {number}
+  */
+  gvlid: 755,
+  /**
+  * decode the stored id value for passing to bid requests
+  * @function
+  * @param { string | undefined } value
+  * @returns {{pairId:string} | undefined }
+  */
   decode(value) {
     return value && Array.isArray(value) ? { 'pairId': value } : undefined
   },
