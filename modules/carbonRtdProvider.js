@@ -10,31 +10,24 @@ import { ajax } from '../src/ajax.js';
 import {getGlobal} from '../src/prebidGlobal.js';
 import { logError, isGptPubadsDefined, generateUUID } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
+import { MODULE_TYPE_RTD } from '../src/activities/modules.js';
 
-const SUBMODULE_NAME = 'carbon'
-const CARBON_GVL_ID = 493;
+const MODULE_NAME = 'carbon'
 const MODULE_VERSION = 'v1.0'
 const STORAGE_KEY = 'carbon_data'
 const PROFILE_ID_KEY = 'carbon_ccuid'
-const TAXONOMY_RULE_EXPIRATION_KEY = 'carbon_ct_expiration'
 
 let rtdHost = '';
 let parentId = '';
+let targetingData = null;
 let features = {};
 
-export const storage = getStorageManager({ gvlid: CARBON_GVL_ID, moduleName: SUBMODULE_NAME })
+export const storage = getStorageManager({moduleType: MODULE_TYPE_RTD, moduleName: MODULE_NAME});
 
 export function setLocalStorage(carbonData) {
   if (storage.localStorageIsEnabled()) {
     let data = JSON.stringify(carbonData);
     storage.setDataInLocalStorage(STORAGE_KEY, data);
-  }
-}
-
-export function setTaxonomyRuleExpiration(customTaxonomyTTL) {
-  if (storage.localStorageIsEnabled()) {
-    let expiration = Date.now() + customTaxonomyTTL;
-    storage.setDataInLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY, expiration);
   }
 }
 
@@ -115,7 +108,7 @@ export function setGPTTargeting(carbonData) {
   }
 }
 
-export function updateRealTimeDataAsync(callback, taxonomyRules) {
+export function fetchRealTimeData() {
   let doc = window.top.document;
   let pageUrl = `${doc.location.protocol}//${doc.location.host}${doc.location.pathname}`;
 
@@ -155,14 +148,9 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
     reqUrl.searchParams.append('dealIdLimit', features.dealId.limit);
   }
 
-  // only request new taxonomy rules from server if no cached rules available
-  if (taxonomyRules && taxonomyRules.length) {
-    reqUrl.searchParams.append('custom_taxonomy', false);
-  } else {
-    reqUrl.searchParams.append('custom_taxonomy', (typeof features?.customTaxonomy?.active === 'undefined') ? true : features.customTaxonomy.active);
-    if (features?.customTaxonomy?.limit && features.customTaxonomy.limit > 0) {
-      reqUrl.searchParams.append('customTaxonomy', features.customTaxonomy.limit);
-    }
+  reqUrl.searchParams.append('custom_taxonomy', (typeof features?.customTaxonomy?.active === 'undefined') ? true : features.customTaxonomy.active);
+  if (features?.customTaxonomy?.limit && features.customTaxonomy.limit > 0) {
+    reqUrl.searchParams.append('customTaxonomyLimit', features.customTaxonomy.limit);
   }
 
   ajax(reqUrl, {
@@ -175,17 +163,8 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
           logError('unable to parse API response');
         }
 
-        // if custom taxonomy didn't expire use the existing data
-        if (taxonomyRules?.length && carbonData?.context) {
-          carbonData.context.customTaxonomy = taxonomyRules;
-        } else if (carbonData.context?.customTaxonomyTTL > 0) {
-          setTaxonomyRuleExpiration(carbonData.context?.customTaxonomyTTL);
-        }
-
-        updateProfileId(carbonData);
-        prepareGPTTargeting(carbonData);
+        targetingData = carbonData;
         setLocalStorage(carbonData);
-        callback();
       }
     },
     error: function () {
@@ -201,25 +180,10 @@ export function updateRealTimeDataAsync(callback, taxonomyRules) {
 
 export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
   try {
-    const carbonData = JSON.parse(storage.getDataFromLocalStorage(STORAGE_KEY) || '{}')
+    let carbonData = targetingData || JSON.parse(storage.getDataFromLocalStorage(STORAGE_KEY) || '{}');
 
     if (carbonData) {
       prepareGPTTargeting(carbonData);
-    }
-
-    // check if custom taxonomy rules have expired
-    let updateTaxonomyRules = true;
-    let taxonomyRuleExpiration = storage.getDataFromLocalStorage(TAXONOMY_RULE_EXPIRATION_KEY);
-
-    if (taxonomyRuleExpiration && !isNaN(taxonomyRuleExpiration)) {
-      updateTaxonomyRules = taxonomyRuleExpiration >= Date.now();
-    }
-
-    // use existing cached custom taxonomy rules if not expired
-    if (!updateTaxonomyRules && carbonData?.context?.customTaxonomy?.length) {
-      updateRealTimeDataAsync(callback, carbonData.context.customTaxonomy);
-    } else {
-      updateRealTimeDataAsync(callback);
     }
 
     callback();
@@ -244,13 +208,14 @@ function init(moduleConfig, userConsent) {
   }
 
   features = moduleConfig?.params?.features || features;
+  fetchRealTimeData();
 
   return true;
 }
 
 /** @type {RtdSubmodule} */
 export const carbonSubmodule = {
-  name: SUBMODULE_NAME,
+  name: MODULE_NAME,
   getBidRequestData: bidRequestHandler,
   init: init
 };
