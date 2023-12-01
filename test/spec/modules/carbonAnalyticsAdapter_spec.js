@@ -188,6 +188,7 @@ describe('carbonAnalyticsAdapter', function() {
       updateProfileId(eventResponse)
 
       expect(storage.getDataFromLocalStorage('carbon_ccuid')).to.equal('d950b592-879b-4c34-884a-bec201115ab9')
+      expect(storage.getCookie('ccuid')).to.equal('d950b592-879b-4c34-884a-bec201115ab9')
     })
   })
 })
