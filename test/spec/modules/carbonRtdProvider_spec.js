@@ -3,9 +3,10 @@ import { carbonSubmodule,
   setLocalStorage,
   matchCustomTaxonomy,
   setGPTTargeting,
-  updateRealTimeDataAsync,
+  fetchRealTimeData,
   storage,
-  bidRequestHandler
+  bidRequestHandler,
+  updateProfileId
 } from 'modules/carbonRtdProvider.js'
 
 const targetingData = {
@@ -83,22 +84,22 @@ const moduleConfig = {
       context: {
         active: true,
         pushGpt: true,
-        limit: 0
+        limit: 10
       },
       audience: {
         active: true,
         pushGpt: true,
-        limit: 0
+        limit: 20
       },
       customTaxonomy: {
         active: true,
         pushGpt: true,
-        limit: 0
+        limit: 30
       },
       dealId: {
         active: true,
         pushGpt: true,
-        limit: 0
+        limit: 40
       }
     }
   }
@@ -203,52 +204,48 @@ describe('carbonRtdProvider', function() {
       })
       let callbackStub = sinon.stub()
       storage.setDataInLocalStorage('carbon_ccuid', 'a7939741-8a3c-4476-9138-b3fb73edc885')
-      updateRealTimeDataAsync(callbackStub, moduleConfig)
+      carbonSubmodule.init(moduleConfig)
 
       const requestUrl = new URL(ajaxStub.firstCall.args[0])
 
       expect(ajaxStub.calledOnce).to.equal(true)
       expect(requestUrl.pathname).to.equal('/v1.0/realtime/testId')
       expect(requestUrl.searchParams.get('profile_id')).to.equal('a7939741-8a3c-4476-9138-b3fb73edc885')
+
       expect(requestUrl.searchParams.get('context')).to.equal('true')
+      expect(requestUrl.searchParams.get('contextLimit')).to.equal('10')
+
       expect(requestUrl.searchParams.get('audience')).to.equal('true')
+      expect(requestUrl.searchParams.get('audienceLimit')).to.equal('20')
+
       expect(requestUrl.searchParams.get('custom_taxonomy')).to.equal('true')
+      expect(requestUrl.searchParams.get('customTaxonomyLimit')).to.equal('30')
+
       expect(requestUrl.searchParams.get('deal_ids')).to.equal('true')
+      expect(requestUrl.searchParams.get('dealIdLimit')).to.equal('40')
     })
   })
 
   describe('bid request handler function', function() {
     it('should take local data, set targeting & make a background request to update data', function() {
-      ajaxStub.callsFake(function() {
-        return function(url, callback) {
-          const fakeResponse = sinon.stub();
-          fakeResponse.returns('headerContent');
-          callback.success(JSON.stringify(targetingData), { getResponseHeader: fakeResponse });
-        }
-      })
       bodyStub.get(function() {
         return 'unit test prebid match'
       })
       let callbackStub = sinon.stub()
 
-      storage.setDataInLocalStorage('carbon_ccuid', 'a7939741-8a3c-4476-9138-b3fb73edc885')
-      storage.setDataInLocalStorage('carbon_ct_expiration', Date.now() + 600000)
       setLocalStorage(targetingData)
-
       bidRequestHandler({}, callbackStub, moduleConfig, {})
-      const requestUrl = new URL(ajaxStub.firstCall.args[0])
 
       expect(window.googletag.pubads().getTargeting('carbon_segment')).to.deep.include.members(['3049feb1-4c23-487c-a2f3-9437f65a782f', '93f8f5e6-6219-4c44-83d1-3e14b83b4177'])
       expect(window.googletag.pubads().getTargeting('cc-iab-class-id')).to.deep.include.members(['269', '375'])
       expect(window.googletag.pubads().getTargeting('cc-custom-taxonomy')).to.deep.include.members(['c6bb65b3-ea0e-4c6e-881d-9b3bb1f8b49f', 'b099fc27-1d21-42d6-af06-781b416f0ac0'])
+    })
+  })
 
-      expect(ajaxStub.calledOnce).to.equal(true)
-      expect(requestUrl.pathname).to.equal('/v1.0/realtime/testId')
-      expect(requestUrl.searchParams.get('profile_id')).to.equal('a7939741-8a3c-4476-9138-b3fb73edc885')
-      expect(requestUrl.searchParams.get('context')).to.equal('true')
-      expect(requestUrl.searchParams.get('audience')).to.equal('true')
-      expect(requestUrl.searchParams.get('custom_taxonomy')).to.equal('true')
-      expect(requestUrl.searchParams.get('deal_ids')).to.equal('true')
+  describe('update profile ID', function() {
+    it('should update the profile ID in local storage', function() {
+      updateProfileId(targetingData)
+      expect(storage.getDataFromLocalStorage('carbon_ccuid')).to.equal('7d40ac1d-e7d2-4979-90a1-6204b80d12f5')
     })
   })
 })

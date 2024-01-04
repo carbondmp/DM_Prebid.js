@@ -2,6 +2,7 @@ import { deepAccess, generateUUID, logError } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
 import { getStorageManager } from '../src/storageManager.js';
 import {getGlobal} from '../src/prebidGlobal.js';
+import {MODULE_TYPE_ANALYTICS} from '../src/activities/modules.js';
 import adapterManager from '../src/adapterManager.js';
 import adapter from '../libraries/analyticsAdapter/AnalyticsAdapter.js';
 import CONSTANTS from '../src/constants.json';
@@ -17,7 +18,7 @@ const ANALYTICS_TYPE = 'endpoint';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 
-export const storage = getStorageManager({gvlid: CARBON_GVL_ID, moduleName: 'carbon'});
+export const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, moduleName: MODULE_NAME});
 
 let analyticsHost = '';
 let pageViewId = '';
@@ -25,15 +26,24 @@ let profileId = '';
 let sessionId = '';
 let parentId = '';
 let pageEngagement = {};
+let auctionEventBuffer = 0;
+let timeLastAuctionEvent = null;
 
-let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
+export let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
   track({eventType, args}) {
     args = args ? JSON.parse(JSON.stringify(args)) : {};
     switch (eventType) {
       case CONSTANTS.EVENTS.AUCTION_END: {
         registerEngagement();
-        let event = createBaseEngagementEvent(args);
-        sendEngagementEvent(event, 'auction_end');
+        let present = Date.now();
+
+        // don't send these events more often than the given buffer
+        if (!timeLastAuctionEvent || present - timeLastAuctionEvent >= auctionEventBuffer) {
+          let event = createBaseEngagementEvent(args);
+          sendEngagementEvent(event, 'auction_end');
+          timeLastAuctionEvent = present;
+        }
+
         break;
       }
       case CONSTANTS.EVENTS.TCF2_ENFORCEMENT: {
@@ -72,6 +82,12 @@ carbonAdapter.enableAnalytics = function (config) {
     logError('required config value "endpoint" not provided');
   }
 
+  if (config?.options.eventBuffer) {
+    auctionEventBuffer = config?.options.eventBuffer;
+  } else {
+    auctionEventBuffer = 1000; // default 1 second
+  }
+
   pageViewId = generateUUID();
   profileId = getProfileId();
   sessionId = getSessionId();
@@ -90,7 +106,7 @@ carbonAdapter.enableAnalytics = function (config) {
   carbonAdapter.originEnableAnalytics(config); // call the base class function
 };
 
-function getProfileId() {
+export function getProfileId() {
   if (storage.localStorageIsEnabled()) {
     let localStorageId = storage.getDataFromLocalStorage(PROFILE_ID_KEY);
     if (localStorageId && localStorageId != '') {
@@ -127,7 +143,7 @@ function getProfileId() {
   return newId;
 }
 
-function updateProfileId(userData) {
+export function updateProfileId(userData) {
   if (userData?.update && userData?.id != '') {
     profileId = userData.id;
 
@@ -141,7 +157,7 @@ function updateProfileId(userData) {
   }
 }
 
-function getSessionId() {
+export function getSessionId() {
   if (storage.cookiesAreEnabled()) {
     let cookieId = storage.getCookie(SESSION_ID_COOKIE);
     if (cookieId && cookieId != '') {
@@ -157,7 +173,7 @@ function getSessionId() {
   return generateUUID();
 }
 
-function registerEngagement() {
+export function registerEngagement() {
   let present = Date.now();
   let timediff = (present - pageEngagement.timeLastEngage) / 1000; // convert to seconds
 
@@ -172,7 +188,7 @@ function registerEngagement() {
   pageEngagement.id = generateUUID();
 };
 
-function getConsentData(args) {
+export function getConsentData(args) {
   if (Array.isArray(args?.bidderRequests) && args.bidderRequests.length > 0) {
     let bidderRequest = args.bidderRequests[0];
 
@@ -195,7 +211,7 @@ function getConsentData(args) {
   }
 }
 
-function getExternalIds() {
+export function getExternalIds() {
   let externalIds = {};
 
   if (getGlobal().getUserIdsAsEids && typeof getGlobal().getUserIdsAsEids == 'function') {
@@ -213,7 +229,7 @@ function getExternalIds() {
   }
 }
 
-function createBaseEngagementEvent(args) {
+export function createBaseEngagementEvent(args) {
   let event = {};
 
   event.profile_id = profileId;
@@ -239,7 +255,7 @@ function createBaseEngagementEvent(args) {
   return event;
 }
 
-function sendEngagementEvent(event, eventTrigger) {
+export function sendEngagementEvent(event, eventTrigger) {
   if (analyticsHost != '' && parentId != '') {
     let reqUrl = `${analyticsHost}/${ANALYTICS_VERSION}/parent/${parentId}/engagement/trigger/${eventTrigger}`;
     ajax(reqUrl,

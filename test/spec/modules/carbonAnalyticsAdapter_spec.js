@@ -1,7 +1,10 @@
 import * as utils from 'src/utils'
 import * as ajax from 'src/ajax'
 import * as events from 'src/events';
-import carbonAdapter from 'modules/carbonAnalyticsAdapter'
+import { carbonAdapter,
+  updateProfileId,
+  storage
+} from 'modules/carbonAnalyticsAdapter'
 import CONSTANTS from 'src/constants.json';
 
 const auctionEndEvent = {
@@ -58,7 +61,8 @@ describe('carbonAnalyticsAdapter', function() {
         provider: 'carbon',
         options: {
           parentId: 'aaabbb',
-          endpoint: 'http://test.example.com'
+          endpoint: 'http://test.example.com',
+          eventBuffer: 1000
         }
       })
 
@@ -88,7 +92,8 @@ describe('carbonAnalyticsAdapter', function() {
         provider: 'carbon',
         options: {
           parentId: 'aaabbb',
-          endpoint: 'http://test.example.com'
+          endpoint: 'http://test.example.com',
+          eventBuffer: 1000
         }
       })
 
@@ -101,16 +106,10 @@ describe('carbonAnalyticsAdapter', function() {
       sinon.spy()
       events.emit(CONSTANTS.EVENTS.AUCTION_END, auctionEndEvent)
 
-      expect(ajaxStub.calledTwice).to.equal(true)
+      expect(ajaxStub.calledOnce).to.equal(true)
 
-      const tcfEnforcementUrl = new URL(ajaxStub.firstCall.args[0])
-      const tcfEnforcementBody = JSON.parse(ajaxStub.firstCall.args[2])
-
-      expect(tcfEnforcementUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/tcf_enforcement')
-      expect(tcfEnforcementBody.start_time).to.equal(1000000000000)
-
-      const auctionEndUrl = new URL(ajaxStub.secondCall.args[0])
-      const auctionEndBody = JSON.parse(ajaxStub.secondCall.args[2])
+      const auctionEndUrl = new URL(ajaxStub.firstCall.args[0])
+      const auctionEndBody = JSON.parse(ajaxStub.firstCall.args[2])
 
       expect(auctionEndUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/auction_end')
       expect(auctionEndBody.consent.gdpr_consent).to.equal('testGDPR')
@@ -122,23 +121,14 @@ describe('carbonAnalyticsAdapter', function() {
       dateStub.onCall(0).returns(1000001000000)
       dateStub.onCall(1).returns(1000001000010)
       dateStub.onCall(2).returns(1000001000010)
-      dateStub.onCall(3).returns(1000001000020)
-      dateStub.onCall(4).returns(1000001000020)
-
       uuidStub.onCall(0).returns('test_engagement_id_2')
 
       events.emit(CONSTANTS.EVENTS.AUCTION_END, auctionEndEvent)
 
-      expect(ajaxStub.calledTwice).to.equal(true)
+      expect(ajaxStub.calledOnce).to.equal(true)
 
-      const tcfEnforcementUrl = new URL(ajaxStub.firstCall.args[0])
-      const tcfEnforcementBody = JSON.parse(ajaxStub.firstCall.args[2])
-
-      expect(tcfEnforcementUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/tcf_enforcement')
-      expect(tcfEnforcementBody.end_time).to.equal(1000001000010)
-
-      const auctionEndUrl = new URL(ajaxStub.secondCall.args[0])
-      const auctionEndBody = JSON.parse(ajaxStub.secondCall.args[2])
+      const auctionEndUrl = new URL(ajaxStub.firstCall.args[0])
+      const auctionEndBody = JSON.parse(ajaxStub.firstCall.args[2])
 
       expect(auctionEndUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/auction_end')
       expect(auctionEndBody.consent.gdpr_consent).to.equal('testGDPR')
@@ -146,7 +136,59 @@ describe('carbonAnalyticsAdapter', function() {
       expect(auctionEndBody.engagement_id).to.equal('test_engagement_id_2')
       expect(auctionEndBody.engagement_count).to.equal(1)
       expect(auctionEndBody.engagement_ttl).to.equal(60)
-      expect(auctionEndBody.end_time).to.equal(1000001000020)
+      expect(auctionEndBody.end_time).to.equal(1000001000010)
+    })
+
+    it('should prevent multiple events within the buffer interval', function() {
+      sinon.spy()
+      dateStub.onCall(0).returns(1000002000000)
+      dateStub.onCall(1).returns(1000002000010)
+      dateStub.onCall(2).returns(1000002000010)
+      dateStub.onCall(3).returns(1000002000000)
+      dateStub.onCall(4).returns(1000002000010)
+      dateStub.onCall(5).returns(1000002000010)
+
+      events.emit(CONSTANTS.EVENTS.AUCTION_END, auctionEndEvent)
+      events.emit(CONSTANTS.EVENTS.AUCTION_END, auctionEndEvent)
+
+      expect(ajaxStub.calledOnce).to.equal(true)
+
+      const auctionEndUrl = new URL(ajaxStub.firstCall.args[0])
+      const auctionEndBody = JSON.parse(ajaxStub.firstCall.args[2])
+
+      expect(auctionEndUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/auction_end')
+      expect(auctionEndBody.consent.gdpr_consent).to.equal('testGDPR')
+      expect(auctionEndBody.consent.ccpa_consent).to.equal('testUSP')
+      expect(auctionEndBody.start_time).to.equal(1000002000000)
+    })
+  })
+
+  describe('update profile ID', function() {
+    beforeEach(function() {
+      carbonAdapter.enableAnalytics({
+        provider: 'carbon',
+        options: {
+          parentId: 'aaabbb',
+          endpoint: 'http://test.example.com',
+          eventBuffer: 1000
+        }
+      })
+
+      ajaxStub.resetHistory()
+      dateStub.resetHistory()
+      uuidStub.resetHistory()
+    })
+
+    it('should set the cookie value in local storage', function() {
+      let eventResponse = {
+        update: true,
+        id: 'd950b592-879b-4c34-884a-bec201115ab9'
+      }
+
+      updateProfileId(eventResponse)
+
+      expect(storage.getDataFromLocalStorage('carbon_ccuid')).to.equal('d950b592-879b-4c34-884a-bec201115ab9')
+      expect(storage.getCookie('ccuid')).to.equal('d950b592-879b-4c34-884a-bec201115ab9')
     })
   })
 })
