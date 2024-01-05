@@ -250,6 +250,10 @@ export function createBaseEngagementEvent(args) {
     event.consent = getConsentData(args);
   }
 
+  if (navigator && navigator.cookieDeprecationLabel) {
+    event.cookieDeprecationLabel = navigator.cookieDeprecationLabel.getValue();
+  }
+
   event.external_ids = getExternalIds(); // TODO check args for EIDs on subsequent auctions
 
   return event;
