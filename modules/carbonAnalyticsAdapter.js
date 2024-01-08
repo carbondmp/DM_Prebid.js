@@ -251,7 +251,7 @@ export function createBaseEngagementEvent(args) {
   }
 
   if (navigator && navigator.cookieDeprecationLabel) {
-    event.cookieDeprecationLabel = navigator.cookieDeprecationLabel.getValue();
+    event.cookie_deprecation_label = navigator.cookieDeprecationLabel.getValue();
   }
 
   event.external_ids = getExternalIds(); // TODO check args for EIDs on subsequent auctions
