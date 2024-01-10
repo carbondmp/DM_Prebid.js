@@ -40,7 +40,7 @@ export let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}
         // don't send these events more often than the given buffer
         if (!timeLastAuctionEvent || present - timeLastAuctionEvent >= auctionEventBuffer) {
           let event = createBaseEngagementEvent(args);
-          sendEngagementEvent(event, 'auction_end');
+          sendEngagementWithLabel(event, 'auction_end');
           timeLastAuctionEvent = present;
         }
 
@@ -54,7 +54,7 @@ export let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}
 
           event.tcf_events = args;
 
-          sendEngagementEvent(event, 'tcf_enforcement');
+          sendEngagementWithLabel(event, 'tcf_enforcement');
         }
         break;
       }
@@ -101,7 +101,7 @@ carbonAdapter.enableAnalytics = function (config) {
   };
 
   let event = createBaseEngagementEvent()
-  sendEngagementEvent(event, 'page_load');
+  sendEngagementWithLabel(event, 'page_load');
 
   carbonAdapter.originEnableAnalytics(config); // call the base class function
 };
@@ -250,13 +250,31 @@ export function createBaseEngagementEvent(args) {
     event.consent = getConsentData(args);
   }
 
-  if (navigator && navigator.cookieDeprecationLabel) {
-    event.cookieDeprecationLabel = navigator.cookieDeprecationLabel.getValue();
-  }
-
   event.external_ids = getExternalIds(); // TODO check args for EIDs on subsequent auctions
 
   return event;
+}
+
+// this function adds the cookie deprecation label to the payload if present
+export function sendEngagementWithLabel(event, eventTrigger) {
+  if (navigator && navigator.cookieDeprecationLabel) {
+    let elapsed = false; // this is to avoid duplicate events
+    let timer = setTimeout(function() { // since the label is a promise we want to set a short maximum time to wait for a result
+      elapsed = true;
+      sendEngagementEvent(event, eventTrigger);
+    }, 100);
+
+    navigator.cookieDeprecationLabel.getValue().then((label) => {
+      clearTimeout(timer);
+
+      if (!elapsed) {
+        event.cookieDeprecationLabel = label;
+        sendEngagementEvent(event, eventTrigger);
+      }
+    });
+  } else {
+    sendEngagementEvent(event, eventTrigger);
+  }
 }
 
 export function sendEngagementEvent(event, eventTrigger) {

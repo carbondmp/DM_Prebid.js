@@ -191,4 +191,45 @@ describe('carbonAnalyticsAdapter', function() {
       expect(storage.getCookie('ccuid')).to.equal('d950b592-879b-4c34-884a-bec201115ab9')
     })
   })
+
+  describe('cookie deprecation label tests', function() {
+    let navigatorStub
+
+    beforeEach(function() {
+      if (navigator && !navigator.cookieDeprecationLabel) {
+        navigator.cookieDeprecationLabel = {
+          getValue: function() {}
+        }
+      }
+
+      navigatorStub = sinon.stub(navigator.cookieDeprecationLabel, 'getValue')
+      navigatorStub.resolves('test_label')
+
+      carbonAdapter.enableAnalytics({
+        provider: 'carbon',
+        options: {
+          parentId: 'aaabbb',
+          endpoint: 'http://test.example.com',
+          eventBuffer: 1000
+        }
+      })
+      ajaxStub.resetHistory()
+      navigatorStub.resetHistory()
+    })
+
+    it('should track an auction end event with a cookie deprecation label', function() {
+      sinon.spy()
+      events.emit(CONSTANTS.EVENTS.AUCTION_END, auctionEndEvent)
+
+      setTimeout(() => {
+        expect(ajaxStub.calledOnce).to.equal(true)
+
+        const auctionEndUrl = new URL(ajaxStub.firstCall.args[0])
+        const auctionEndBody = JSON.parse(ajaxStub.firstCall.args[2])
+
+        expect(auctionEndUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/auction_end')
+        expect(auctionEndBody.cookieDeprecationLabel).to.equal('test_label')
+      }, 100)
+    })
+  })
 })
