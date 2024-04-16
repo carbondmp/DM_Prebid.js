@@ -16,6 +16,7 @@ pbjs.enableAnalytics({
   options: {
     parentId: '', //Contact Magnite to recieve your unique ID
     endpoint: '' //Contact magnite to recieve the analytics endpoint value
+    eventBuffer: 1000 //Minimum interval between analytics events to the server
   }
 });
 ```

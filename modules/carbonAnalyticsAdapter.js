@@ -18,7 +18,7 @@ const ANALYTICS_TYPE = 'endpoint';
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
 
-export const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, moduleName: MODULE_NAME});
+export const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, moduleName: MODULE_NAME, gvlid: CARBON_GVL_ID});
 
 let analyticsHost = '';
 let pageViewId = '';
@@ -82,11 +82,7 @@ carbonAdapter.enableAnalytics = function (config) {
     logError('required config value "endpoint" not provided');
   }
 
-  if (config?.options.eventBuffer) {
-    auctionEventBuffer = config?.options.eventBuffer;
-  } else {
-    auctionEventBuffer = 1000; // default 1 second
-  }
+  auctionEventBuffer = config?.options?.eventBuffer || 1000;
 
   pageViewId = generateUUID();
   profileId = getProfileId();
@@ -205,7 +201,7 @@ export function getConsentData(args) {
       consentData.ccpa_consent = bidderRequest.uspConsent.consentString;
     }
 
-    if (consentData.gdpr_consent != '' && consentData.ccpa_consent != '') {
+    if (consentData.gdpr_consent != '' || consentData.ccpa_consent != '') {
       return consentData;
     }
   }

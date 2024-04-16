@@ -12,6 +12,7 @@ import { logError, isGptPubadsDefined, generateUUID } from '../src/utils.js';
 import { getStorageManager } from '../src/storageManager.js';
 import { MODULE_TYPE_RTD } from '../src/activities/modules.js';
 
+const CARBON_GVL_ID = 493;
 const MODULE_NAME = 'carbon'
 const MODULE_VERSION = 'v1.0'
 const STORAGE_KEY = 'carbon_data'
@@ -22,7 +23,7 @@ let parentId = '';
 let targetingData = null;
 let features = {};
 
-export const storage = getStorageManager({moduleType: MODULE_TYPE_RTD, moduleName: MODULE_NAME});
+export const storage = getStorageManager({moduleType: MODULE_TYPE_RTD, moduleName: MODULE_NAME, gvlid: CARBON_GVL_ID});
 
 export function setLocalStorage(carbonData) {
   if (storage.localStorageIsEnabled()) {

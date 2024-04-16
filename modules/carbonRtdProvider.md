@@ -30,10 +30,21 @@ pbjs.setConfig({
           parentId: '', //Contact Magnite for a unique ID
           endpoint: '', //Contact magnite to recieve the analytics endpoint value
           features: {
-            enableContext: true,
-            enableAudience: true,
-            enableCustomTaxonomy: true,
-            enableDealId: true
+            audience: {
+              active: true,
+              pushGpt: true,
+              limit: -1
+            },
+            context: {
+              active: true,
+              pushGpt: true,
+              limit: -1
+            },
+            customTaxonomy: {
+              active: true,
+              pushGpt: true,
+              limit: -1
+            }
           }
         }
       }
