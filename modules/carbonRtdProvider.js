@@ -17,6 +17,28 @@ const MODULE_NAME = 'carbon'
 const MODULE_VERSION = 'v1.0'
 const STORAGE_KEY = 'carbon_data'
 const PROFILE_ID_KEY = 'carbon_ccuid'
+const GPP_SECTIONS = {
+  1: 'tcfeuv1',
+  2: 'tcfeuv2',
+  5: 'tcfcav1',
+  6: 'uspv1',
+  7: 'usnat',
+  8: 'usca',
+  9: 'usva',
+  10: 'usco',
+  11: 'usut',
+  12: 'usct',
+  13: 'usfl',
+  14: 'usmt',
+  15: 'usor',
+  16: 'ustx',
+  17: 'usde',
+  18: 'usia',
+  19: 'usne',
+  20: 'usnh',
+  21: 'usnj',
+  22: 'ustn'
+}
 
 let rtdHost = '';
 let parentId = '';
@@ -30,6 +52,83 @@ export function setLocalStorage(carbonData) {
     let data = JSON.stringify(carbonData);
     storage.setDataInLocalStorage(STORAGE_KEY, data);
   }
+}
+
+export function hasConsent(consentData) {
+  if (consentData?.gdpr?.gdprApplies) {
+    const vendorConsents = consentData?.gdpr?.vendorData?.vendor?.consents;
+    if (vendorConsents && typeof vendorConsents === 'object') {
+      return !!vendorConsents[CARBON_GVL_ID];
+    }
+    return false;
+  }
+
+  if (consentData?.usp && typeof consentData.usp === 'string' && consentData.usp.length >= 3) {
+    const notice = consentData.usp[1].toLowerCase();
+    const optOut = consentData.usp[2].toLowerCase();
+
+    if (notice === 'y' && optOut === 'n') {
+      return true;
+    } else if (optOut === 'y') {
+      return false;
+    }
+  }
+
+  if (consentData?.gpp) {
+    for (let i of consentData.gpp.applicableSections || []) {
+      const sectionName = GPP_SECTIONS?.[i];
+      const section = consentData.gpp.parsedSections?.[sectionName];
+
+      switch (sectionName) {
+        case 'tcfeuv1':
+        case 'tcfeuv2':
+        case 'tcfcav1':
+          if (section && section.vendor?.consents?.[CARBON_GVL_ID] === true) {
+            return true;
+          } else if (section && section.vendor?.consents?.[CARBON_GVL_ID] === false) {
+            return false;
+          }
+          break;
+
+        case 'uspv1':
+          if (section?.uspString?.length >= 3) {
+            const notice = section.uspString[1].toLowerCase();
+            const optOut = section.uspString[2].toLowerCase();
+            if (notice === 'y' && optOut === 'n') {
+              return true;
+            } else if (optOut === 'y') {
+              return false;
+            }
+          }
+          break;
+
+        case 'usnat':
+        case 'usca':
+        case 'usva':
+        case 'usco':
+        case 'usut':
+        case 'usct':
+        case 'usfl':
+        case 'usmt':
+        case 'usor':
+        case 'ustx':
+        case 'usde':
+        case 'usia':
+        case 'usne':
+        case 'usnh':
+        case 'usnj':
+        case 'ustn':
+          if (section?.sharingNotice === 1 && section.sharingOptOutNotice === 1) {
+            return true;
+          } else if (section?.sharingNotice === 2 || section?.sharingOptOutNotice === 2) {
+            return false;
+          }
+          break;
+      }
+    }
+  }
+
+  return true;
 }
 
 export function updateProfileId(carbonData) {
@@ -109,7 +208,7 @@ export function setGPTTargeting(carbonData) {
   }
 }
 
-export function fetchRealTimeData() {
+export function fetchRealTimeData(callback) {
   let doc = window.top.document;
   let pageUrl = `${doc.location.protocol}//${doc.location.host}${doc.location.pathname}`;
 
@@ -165,7 +264,10 @@ export function fetchRealTimeData() {
         }
 
         targetingData = carbonData;
-        setLocalStorage(carbonData);
+
+        if (callback) {
+          callback(targetingData);
+        }
       }
     },
     error: function () {
@@ -181,10 +283,12 @@ export function fetchRealTimeData() {
 
 export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
   try {
-    let carbonData = targetingData || JSON.parse(storage.getDataFromLocalStorage(STORAGE_KEY) || '{}');
-
-    if (carbonData) {
-      prepareGPTTargeting(carbonData);
+    if (hasConsent(userConsent)) {
+      if (targetingData) {
+        prepareGPTTargeting(targetingData);
+      } else {
+        fetchRealTimeData(prepareGPTTargeting);
+      }
     }
 
     callback();
@@ -209,7 +313,10 @@ function init(moduleConfig, userConsent) {
   }
 
   features = moduleConfig?.params?.features || features;
-  fetchRealTimeData();
+
+  if (hasConsent(userConsent)) {
+    fetchRealTimeData();
+  }
 
   return true;
 }

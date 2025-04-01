@@ -1,4 +1,4 @@
-import { deepAccess, generateUUID, logError } from '../src/utils.js';
+import { deepAccess, generateUUID, logError, logInfo } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
 import { getStorageManager } from '../src/storageManager.js';
 import {getGlobal} from '../src/prebidGlobal.js';
@@ -17,6 +17,28 @@ const ANALYTICS_TYPE = 'endpoint';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 const MINUTE_MS = 60 * 1000;
+const GPP_SECTIONS = {
+  1: 'tcfeuv1',
+  2: 'tcfeuv2',
+  5: 'tcfcav1',
+  6: 'uspv1',
+  7: 'usnat',
+  8: 'usca',
+  9: 'usva',
+  10: 'usco',
+  11: 'usut',
+  12: 'usct',
+  13: 'usfl',
+  14: 'usmt',
+  15: 'usor',
+  16: 'ustx',
+  17: 'usde',
+  18: 'usia',
+  19: 'usne',
+  20: 'usnh',
+  21: 'usnj',
+  22: 'ustn'
+}
 
 export const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, moduleName: MODULE_NAME, gvlid: CARBON_GVL_ID});
 
@@ -28,6 +50,83 @@ let parentId = '';
 let pageEngagement = {};
 let auctionEventBuffer = 0;
 let timeLastAuctionEvent = null;
+
+export function hasConsent(consentData) {
+  if (consentData?.gdpr?.gdprApplies) {
+    const vendorConsents = consentData?.gdpr?.vendorData?.vendor?.consents;
+    if (vendorConsents && typeof vendorConsents === 'object') {
+      return !!vendorConsents[CARBON_GVL_ID];
+    }
+    return false;
+  }
+
+  if (consentData?.usp && typeof consentData.usp === 'string' && consentData.usp.length >= 3) {
+    const notice = consentData.usp[1].toLowerCase();
+    const optOut = consentData.usp[2].toLowerCase();
+
+    if (notice === 'y' && optOut === 'n') {
+      return true;
+    } else if (optOut === 'y') {
+      return false;
+    }
+  }
+
+  if (consentData?.gpp) {
+    for (let i of consentData.gpp.applicableSections || []) {
+      const sectionName = GPP_SECTIONS?.[i];
+      const section = consentData.gpp.parsedSections?.[sectionName];
+
+      switch (sectionName) {
+        case 'tcfeuv1':
+        case 'tcfeuv2':
+        case 'tcfcav1':
+          if (section && section.vendor?.consents?.[CARBON_GVL_ID] === true) {
+            return true;
+          } else if (section && section.vendor?.consents?.[CARBON_GVL_ID] === false) {
+            return false;
+          }
+          break;
+
+        case 'uspv1':
+          if (section?.uspString?.length >= 3) {
+            const notice = section.uspString[1].toLowerCase();
+            const optOut = section.uspString[2].toLowerCase();
+            if (notice === 'y' && optOut === 'n') {
+              return true;
+            } else if (optOut === 'y') {
+              return false;
+            }
+          }
+          break;
+
+        case 'usnat':
+        case 'usca':
+        case 'usva':
+        case 'usco':
+        case 'usut':
+        case 'usct':
+        case 'usfl':
+        case 'usmt':
+        case 'usor':
+        case 'ustx':
+        case 'usde':
+        case 'usia':
+        case 'usne':
+        case 'usnh':
+        case 'usnj':
+        case 'ustn':
+          if (section?.sharingNotice === 1 && section.sharingOptOutNotice === 1) {
+            return true;
+          } else if (section?.sharingNotice === 2 || section?.sharingOptOutNotice === 2) {
+            return false;
+          }
+          break;
+      }
+    }
+  }
+
+  return true;
+}
 
 export let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
   track({eventType, args}) {
@@ -69,7 +168,12 @@ export let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}
 carbonAdapter.originEnableAnalytics = carbonAdapter.enableAnalytics;
 
 // override enableAnalytics so we can get access to the config passed in from the page
-carbonAdapter.enableAnalytics = function (config) {
+carbonAdapter.enableAnalytics = function ({ config, consentData }) {
+  if (!hasConsent(consentData)) {
+    logInfo('user consent could not be obtained');
+    return;
+  }
+
   if (config?.options?.parentId) {
     parentId = config.options.parentId;
   } else {
