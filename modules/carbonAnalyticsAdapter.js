@@ -1,4 +1,4 @@
-import { deepAccess, generateUUID, logError, logInfo } from '../src/utils.js';
+import { deepAccess, generateUUID, logError } from '../src/utils.js';
 import { ajax } from '../src/ajax.js';
 import { getStorageManager } from '../src/storageManager.js';
 import {getGlobal} from '../src/prebidGlobal.js';
@@ -44,169 +44,130 @@ export const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, mod
 
 let analyticsHost = '';
 let pageViewId = '';
-let profileId = '';
-let sessionId = '';
+let profileId = null;
+let sessionId = null;
 let parentId = '';
 let pageEngagement = {};
 let auctionEventBuffer = 0;
 let timeLastAuctionEvent = null;
-
-export function hasConsent(consentData) {
-  if (consentData?.gdpr?.gdprApplies) {
-    const vendorConsents = consentData?.gdpr?.vendorData?.vendor?.consents;
-    if (vendorConsents && typeof vendorConsents === 'object') {
-      return !!vendorConsents[CARBON_GVL_ID];
-    }
-    return false;
+let consentData = {
+  hasConsent: false,
+  sources: {
+    tcf: {consentString: '', consent: false},
+    usp: {consentString: '', consent: false},
+    gpp: {consentString: '', consent: false}
   }
-
-  if (consentData?.usp && typeof consentData.usp === 'string' && consentData.usp.length >= 3) {
-    const notice = consentData.usp[1].toLowerCase();
-    const optOut = consentData.usp[2].toLowerCase();
-
-    if (notice === 'y' && optOut === 'n') {
-      return true;
-    } else if (optOut === 'y') {
-      return false;
-    }
-  }
-
-  if (consentData?.gpp) {
-    for (let i of consentData.gpp.applicableSections || []) {
-      const sectionName = GPP_SECTIONS?.[i];
-      const section = consentData.gpp.parsedSections?.[sectionName];
-
-      switch (sectionName) {
-        case 'tcfeuv1':
-        case 'tcfeuv2':
-        case 'tcfcav1':
-          if (section && section.vendor?.consents?.[CARBON_GVL_ID] === true) {
-            return true;
-          } else if (section && section.vendor?.consents?.[CARBON_GVL_ID] === false) {
-            return false;
-          }
-          break;
-
-        case 'uspv1':
-          if (section?.uspString?.length >= 3) {
-            const notice = section.uspString[1].toLowerCase();
-            const optOut = section.uspString[2].toLowerCase();
-            if (notice === 'y' && optOut === 'n') {
-              return true;
-            } else if (optOut === 'y') {
-              return false;
-            }
-          }
-          break;
-
-        case 'usnat':
-        case 'usca':
-        case 'usva':
-        case 'usco':
-        case 'usut':
-        case 'usct':
-        case 'usfl':
-        case 'usmt':
-        case 'usor':
-        case 'ustx':
-        case 'usde':
-        case 'usia':
-        case 'usne':
-        case 'usnh':
-        case 'usnj':
-        case 'ustn':
-          if (section?.sharingNotice === 1 && section.sharingOptOutNotice === 1) {
-            return true;
-          } else if (section?.sharingNotice === 2 || section?.sharingOptOutNotice === 2) {
-            return false;
-          }
-          break;
-      }
-    }
-  }
-
-  return true;
-}
-
-export let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
-  track({eventType, args}) {
-    args = args ? JSON.parse(JSON.stringify(args)) : {};
-    switch (eventType) {
-      case CONSTANTS.EVENTS.AUCTION_END: {
-        registerEngagement();
-        let present = Date.now();
-
-        // don't send these events more often than the given buffer
-        if (!timeLastAuctionEvent || present - timeLastAuctionEvent >= auctionEventBuffer) {
-          let event = createBaseEngagementEvent(args);
-          sendEngagementWithLabel(event, 'auction_end');
-          timeLastAuctionEvent = present;
-        }
-
-        break;
-      }
-      case CONSTANTS.EVENTS.TCF2_ENFORCEMENT: {
-        // check for relevant tcf information on the event before recording
-        if (args.storageBlocked?.length > 0 || args.biddersBlocked?.length > 0 || args.analyticsBlocked?.length > 0) {
-          registerEngagement();
-          let event = createBaseEngagementEvent(args);
-
-          event.tcf_events = args;
-
-          sendEngagementWithLabel(event, 'tcf_enforcement');
-        }
-        break;
-      }
-      default: {
-        break;
-      }
-    }
-  }
-});
-
-// save the base class function
-carbonAdapter.originEnableAnalytics = carbonAdapter.enableAnalytics;
-
-// override enableAnalytics so we can get access to the config passed in from the page
-carbonAdapter.enableAnalytics = function ({ config, consentData }) {
-  if (!hasConsent(consentData)) {
-    logInfo('user consent could not be obtained');
-    return;
-  }
-
-  if (config?.options?.parentId) {
-    parentId = config.options.parentId;
-  } else {
-    logError('required config value "parentId" not provided');
-  }
-
-  if (config?.options.endpoint) {
-    analyticsHost = config.options.endpoint;
-  } else {
-    logError('required config value "endpoint" not provided');
-  }
-
-  auctionEventBuffer = config?.options?.eventBuffer || 1000;
-
-  pageViewId = generateUUID();
-  profileId = getProfileId();
-  sessionId = getSessionId();
-
-  pageEngagement = { // create the initial page engagement event
-    ttl: 60, // unit is seconds
-    count: 0,
-    id: generateUUID(),
-    startTime: Date.now(),
-    timeLastEngage: Date.now()
-  };
-
-  let event = createBaseEngagementEvent()
-  sendEngagementWithLabel(event, 'page_load');
-
-  carbonAdapter.originEnableAnalytics(config); // call the base class function
 };
 
+export function checkConsent(callback) {
+  if (!consentData.hasConsent) { // this will check consent each time until it's valid
+    let promises = [];
+
+    if (window.__tcfapi) {
+      promises.push(new Promise((resolve) => {
+        window.__tcfapi('getTCData', 2, (data, success) => {
+          if (success && data.gdprApplies) {
+            consentData.sources.tcf.consentString = data.tcString;
+            consentData.sources.tcf.consent = data.vendor.consents[CARBON_GVL_ID];
+          }
+          resolve();
+        });
+      }));
+    }
+
+    if (window.__uspapi) {
+      promises.push(new Promise((resolve) => {
+        window.__uspapi('getUSPData', 1, (data, success) => {
+          if (success && data.uspString) {
+            consentData.sources.usp.consentString = data.uspString;
+            consentData.sources.usp.consent = (data.uspString[1].toLowerCase() == 'y' && data.uspString[2].toLowerCase() == 'n');
+          }
+          resolve();
+        });
+      }));
+    }
+
+    if (window.__gpp) {
+      promises.push(new Promise((resolve) => {
+        window.__gpp('ping', (data, success) => {
+          if (success) {
+            consentData.sources.gpp.consentString = data.gppString;
+
+            for (let i of data.applicableSections || []) {
+              let sectionName = GPP_SECTIONS?.[i];
+              let section = data.parsedSections[sectionName];
+
+              if (Array.isArray(section)) {
+                section = section[0];
+              }
+
+              switch (sectionName) {
+                case 'tcfeuv1':
+                case 'tcfeuv2':
+                case 'tcfcav1':
+                  if (section && section.vendor?.consents?.[CARBON_GVL_ID]) {
+                    consentData.sources.gpp.consent = true;
+                  }
+                  break;
+
+                case 'uspv1':
+                  if (section?.uspString?.length >= 3) {
+                    const notice = section.uspString[1].toLowerCase();
+                    const optOut = section.uspString[2].toLowerCase();
+                    if (notice === 'y' && optOut === 'n') {
+                      consentData.sources.gpp.consent = true;
+                    }
+                  }
+                  break;
+
+                case 'usnat':
+                case 'usca':
+                case 'usva':
+                case 'usco':
+                case 'usut':
+                case 'usct':
+                case 'usfl':
+                case 'usmt':
+                case 'usor':
+                case 'ustx':
+                case 'usde':
+                case 'usia':
+                case 'usne':
+                case 'usnh':
+                case 'usnj':
+                case 'ustn':
+                  if (section?.SharingNotice === 1) {
+                    consentData.sources.gpp.consent = true;
+                  }
+                  break;
+              }
+            }
+            resolve();
+          }
+        });
+      }))
+    }
+
+    const timeoutPromise = new Promise(resolve => setTimeout(resolve, 2000));
+    Promise.race([
+      Promise.allSettled(promises),
+      timeoutPromise
+    ]).then(() => {
+      consentData.hasConsent = (consentData.sources.tcf?.consent || consentData.sources.usp?.consent || consentData.sources.gpp?.consent)
+      if (consentData.hasConsent) {
+        callback();
+      }
+    });
+  } else {
+    callback();
+  }
+}
+
 export function getProfileId() {
+  if (profileId != '') {
+    return profileId;
+  }
+
   if (storage.localStorageIsEnabled()) {
     let localStorageId = storage.getDataFromLocalStorage(PROFILE_ID_KEY);
     if (localStorageId && localStorageId != '') {
@@ -258,6 +219,10 @@ export function updateProfileId(userData) {
 }
 
 export function getSessionId() {
+  if (sessionId != '') {
+    return sessionId;
+  }
+
   if (storage.cookiesAreEnabled()) {
     let cookieId = storage.getCookie(SESSION_ID_COOKIE);
     if (cookieId && cookieId != '') {
@@ -288,29 +253,6 @@ export function registerEngagement() {
   pageEngagement.id = generateUUID();
 };
 
-export function getConsentData(args) {
-  if (Array.isArray(args?.bidderRequests) && args.bidderRequests.length > 0) {
-    let bidderRequest = args.bidderRequests[0];
-
-    let consentData = {
-      gdpr_consent: '',
-      ccpa_consent: ''
-    };
-
-    if (bidderRequest?.gdprConsent?.consentString) {
-      consentData.gdpr_consent = bidderRequest.gdprConsent.consentString;
-    }
-
-    if (bidderRequest?.uspConsent?.consentString) {
-      consentData.ccpa_consent = bidderRequest.uspConsent.consentString;
-    }
-
-    if (consentData.gdpr_consent != '' || consentData.ccpa_consent != '') {
-      return consentData;
-    }
-  }
-}
-
 export function getExternalIds() {
   let externalIds = {};
 
@@ -332,8 +274,8 @@ export function getExternalIds() {
 export function createBaseEngagementEvent(args) {
   let event = {};
 
-  event.profile_id = profileId;
-  event.session_id = sessionId;
+  event.profile_id = getProfileId();
+  event.session_id = getSessionId();
   event.pageview_id = pageViewId;
 
   event.engagement_id = pageEngagement.id;
@@ -346,9 +288,9 @@ export function createBaseEngagementEvent(args) {
   event.url = window.location.href;
   event.referrer = document.referrer || deepAccess(args, 'bidderRequests.0.refererInfo.page') || undefined;
 
-  if (args?.bidderRequests) {
-    event.consent = getConsentData(args);
-  }
+  event.consent = {};
+  event.consent.gdpr_consent = consentData.sources.tcf.consentString;
+  event.consent.ccpa_consent = consentData.sources.usp.consentString;
 
   event.external_ids = getExternalIds(); // TODO check args for EIDs on subsequent auctions
 
@@ -405,6 +347,81 @@ export function sendEngagementEvent(event, eventTrigger) {
       }
     );
   }
+};
+
+export let carbonAdapter = Object.assign(adapter({analyticsHost, ANALYTICS_TYPE}), {
+  track({eventType, args}) {
+    args = args ? JSON.parse(JSON.stringify(args)) : {};
+    switch (eventType) {
+      case CONSTANTS.EVENTS.AUCTION_END: {
+        registerEngagement();
+        let present = Date.now();
+
+        // don't send these events more often than the given buffer
+        if (!timeLastAuctionEvent || present - timeLastAuctionEvent >= auctionEventBuffer) {
+          checkConsent(() => {
+            let event = createBaseEngagementEvent(args);
+            sendEngagementWithLabel(event, 'auction_end')
+          });
+          timeLastAuctionEvent = present;
+        }
+
+        break;
+      }
+      case CONSTANTS.EVENTS.TCF2_ENFORCEMENT: {
+        // check for relevant tcf information on the event before recording
+        if (args.storageBlocked?.length > 0 || args.biddersBlocked?.length > 0 || args.analyticsBlocked?.length > 0) {
+          registerEngagement();
+          checkConsent(() => {
+            let event = createBaseEngagementEvent(args);
+            event.tcf_events = args;
+            sendEngagementWithLabel(event, 'tcf_enforcement')
+          });
+        }
+        break;
+      }
+      default: {
+        break;
+      }
+    }
+  }
+});
+
+// save the base class function
+carbonAdapter.originEnableAnalytics = carbonAdapter.enableAnalytics;
+
+// override enableAnalytics so we can get access to the config passed in from the page
+carbonAdapter.enableAnalytics = function (config) {
+  if (config?.options?.parentId) {
+    parentId = config.options.parentId;
+  } else {
+    logError('required config value "parentId" not provided');
+  }
+
+  if (config?.options.endpoint) {
+    analyticsHost = config.options.endpoint;
+  } else {
+    logError('required config value "endpoint" not provided');
+  }
+
+  auctionEventBuffer = config?.options?.eventBuffer || 1000;
+
+  pageViewId = generateUUID();
+
+  pageEngagement = { // create the initial page engagement event
+    ttl: 60, // unit is seconds
+    count: 0,
+    id: generateUUID(),
+    startTime: Date.now(),
+    timeLastEngage: Date.now()
+  };
+
+  checkConsent(() => {
+    let event = createBaseEngagementEvent()
+    sendEngagementWithLabel(event, 'page_load');
+  });
+
+  carbonAdapter.originEnableAnalytics(config); // call the base class function
 };
 
 adapterManager.registerAnalyticsAdapter({

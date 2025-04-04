@@ -58,7 +58,7 @@ export function hasConsent(consentData) {
   if (consentData?.gdpr?.gdprApplies) {
     const vendorConsents = consentData?.gdpr?.vendorData?.vendor?.consents;
     if (vendorConsents && typeof vendorConsents === 'object') {
-      return !!vendorConsents[CARBON_GVL_ID];
+      return vendorConsents[CARBON_GVL_ID];
     }
     return false;
   }
@@ -76,8 +76,12 @@ export function hasConsent(consentData) {
 
   if (consentData?.gpp) {
     for (let i of consentData.gpp.applicableSections || []) {
-      const sectionName = GPP_SECTIONS?.[i];
-      const section = consentData.gpp.parsedSections?.[sectionName];
+      let sectionName = GPP_SECTIONS?.[i];
+      let section = consentData.gpp.parsedSections[sectionName];
+
+      if (Array.isArray(section)) {
+        section = section[0];
+      }
 
       switch (sectionName) {
         case 'tcfeuv1':
@@ -118,9 +122,9 @@ export function hasConsent(consentData) {
         case 'usnh':
         case 'usnj':
         case 'ustn':
-          if (section?.sharingNotice === 1 && section.sharingOptOutNotice === 1) {
+          if (section?.SharingNotice === 1) {
             return true;
-          } else if (section?.sharingNotice === 2 || section?.sharingOptOutNotice === 2) {
+          } else if (section?.SharingNotice === 2) {
             return false;
           }
           break;
@@ -208,7 +212,7 @@ export function setGPTTargeting(carbonData) {
   }
 }
 
-export function fetchRealTimeData(callback) {
+export function fetchRealTimeData() {
   let doc = window.top.document;
   let pageUrl = `${doc.location.protocol}//${doc.location.host}${doc.location.pathname}`;
 
@@ -264,10 +268,7 @@ export function fetchRealTimeData(callback) {
         }
 
         targetingData = carbonData;
-
-        if (callback) {
-          callback(targetingData);
-        }
+        prepareGPTTargeting(targetingData);
       }
     },
     error: function () {
@@ -287,7 +288,7 @@ export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
       if (targetingData) {
         prepareGPTTargeting(targetingData);
       } else {
-        fetchRealTimeData(prepareGPTTargeting);
+        fetchRealTimeData();
       }
     }
 
@@ -313,10 +314,6 @@ function init(moduleConfig, userConsent) {
   }
 
   features = moduleConfig?.params?.features || features;
-
-  if (hasConsent(userConsent)) {
-    fetchRealTimeData();
-  }
 
   return true;
 }
