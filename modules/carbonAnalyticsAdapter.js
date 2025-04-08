@@ -44,8 +44,8 @@ export const storage = getStorageManager({moduleType: MODULE_TYPE_ANALYTICS, mod
 
 let analyticsHost = '';
 let pageViewId = '';
-let profileId = null;
-let sessionId = null;
+let profileId = '';
+let sessionId = '';
 let parentId = '';
 let pageEngagement = {};
 let auctionEventBuffer = 0;
