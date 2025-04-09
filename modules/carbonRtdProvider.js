@@ -15,7 +15,6 @@ import { MODULE_TYPE_RTD } from '../src/activities/modules.js';
 const CARBON_GVL_ID = 493;
 const MODULE_NAME = 'carbon'
 const MODULE_VERSION = 'v1.0'
-const STORAGE_KEY = 'carbon_data'
 const PROFILE_ID_KEY = 'carbon_ccuid'
 const GPP_SECTIONS = {
   1: 'tcfeuv1',
@@ -46,13 +45,6 @@ let targetingData = null;
 let features = {};
 
 export const storage = getStorageManager({moduleType: MODULE_TYPE_RTD, moduleName: MODULE_NAME, gvlid: CARBON_GVL_ID});
-
-export function setLocalStorage(carbonData) {
-  if (storage.localStorageIsEnabled()) {
-    let data = JSON.stringify(carbonData);
-    storage.setDataInLocalStorage(STORAGE_KEY, data);
-  }
-}
 
 export function hasConsent(consentData) {
   if (consentData?.gdpr?.gdprApplies) {
@@ -298,7 +290,7 @@ export function bidRequestHandler(bidReqConfig, callback, config, userConsent) {
   }
 }
 
-function init(moduleConfig, userConsent) {
+function init(moduleConfig) {
   if (moduleConfig?.params?.parentId) {
     parentId = moduleConfig.params.parentId;
   } else {

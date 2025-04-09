@@ -285,9 +285,6 @@ describe('carbonAnalyticsAdapter', function() {
         const auctionEndUrl = new URL(ajaxStub.firstCall.args[0])
         const auctionEndBody = JSON.parse(ajaxStub.firstCall.args[2])
 
-        // eslint-disable-next-line no-console
-        console.log(auctionEndUrl.pathname)
-
         expect(auctionEndUrl.pathname).to.equal('/v1.0/parent/aaabbb/engagement/trigger/auction_end')
         expect(auctionEndBody.cookieDeprecationLabel).to.equal('test_label')
 
