@@ -114,12 +114,11 @@ export function hasConsent(consentData) {
         case 'usnh':
         case 'usnj':
         case 'ustn':
-          if (section?.SharingNotice === 1) {
+          if (section?.SharingNotice == 1 && section.SharingOptOut == 1) {
             return true;
-          } else if (section?.SharingNotice === 2) {
+          } else {
             return false;
           }
-          break;
       }
     }
   }

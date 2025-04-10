@@ -80,7 +80,15 @@ export function checkConsent(callback) {
         window.__uspapi('getUSPData', 1, (data, success) => {
           if (success && data.uspString) {
             consentData.sources.usp.consentString = data.uspString;
-            consentData.sources.usp.consent = (data.uspString[1].toLowerCase() == 'y' && data.uspString[2].toLowerCase() == 'n');
+            if (data.uspString.length >= 3) {
+              const notice = data.uspString[1].toLowerCase();
+              const optOut = data.uspString[2].toLowerCase();
+              if (notice === 'y' && optOut === 'n') {
+                consentData.sources.usp.consent = true;
+              } else if (optOut === 'y') {
+                consentData.sources.usp.consent = false;
+              }
+            }
           }
           resolve();
         });
@@ -136,7 +144,7 @@ export function checkConsent(callback) {
                 case 'usnh':
                 case 'usnj':
                 case 'ustn':
-                  if (section?.SharingNotice === 1) {
+                  if (section?.SharingNotice === 1 && section?.SharingOptOut) {
                     consentData.sources.gpp.consent = true;
                   }
                   break;
