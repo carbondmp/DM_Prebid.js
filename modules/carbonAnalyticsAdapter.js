@@ -105,6 +105,10 @@ export function checkConsent(callback) {
               let sectionName = GPP_SECTIONS?.[i];
               let section = data.parsedSections[sectionName];
 
+              if (!section) {
+                continue;
+              }
+
               if (Array.isArray(section)) {
                 section = section[0];
               }
@@ -113,13 +117,13 @@ export function checkConsent(callback) {
                 case 'tcfeuv1':
                 case 'tcfeuv2':
                 case 'tcfcav1':
-                  if (section && section.vendor?.consents?.[CARBON_GVL_ID]) {
+                  if (section.vendor.consents[CARBON_GVL_ID]) {
                     consentData.sources.gpp.consent = true;
                   }
                   break;
 
                 case 'uspv1':
-                  if (section?.uspString?.length >= 3) {
+                  if (section.uspString.length >= 3) {
                     const notice = section.uspString[1].toLowerCase();
                     const optOut = section.uspString[2].toLowerCase();
                     if (notice === 'y' && optOut === 'n') {
@@ -144,7 +148,7 @@ export function checkConsent(callback) {
                 case 'usnh':
                 case 'usnj':
                 case 'ustn':
-                  if (section?.SharingNotice === 1 && section?.SharingOptOut) {
+                  if (section.SharingNotice == 1 && section.SharingOptOut == 1) {
                     consentData.sources.gpp.consent = true;
                   }
                   break;
