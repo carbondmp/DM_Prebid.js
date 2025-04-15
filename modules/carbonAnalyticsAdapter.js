@@ -59,6 +59,36 @@ let consentData = {
   }
 };
 
+export function handleGppEUConsent(section) {
+  const vendorConsents = section.vendor?.consents || section.VendorConsents;
+  if (vendorConsents[CARBON_GVL_ID] == true) {
+    consentData.sources.gpp.consent = true;
+  }
+}
+
+export function handleGppUSPConsent(section) {
+  if (section.uspString.length >= 3) {
+    const notice = section.uspString[1].toLowerCase();
+    const optOut = section.uspString[2].toLowerCase();
+    if (notice === 'y' && optOut === 'n') {
+      consentData.sources.gpp.consent = true;
+    }
+  }
+}
+
+export function handleGppUSNatConsent(section) {
+  if (section.SharingNotice == 1 && section.SharingOptOut == 1) {
+    consentData.sources.gpp.consent = true;
+  }
+}
+
+export function handleGppSection(sectionName, section, handlers) {
+  const handler = handlers[sectionName] || handlers.default;
+  if (handler) {
+    handler(section);
+  }
+}
+
 export function checkConsent(callback) {
   if (!consentData.hasConsent) { // this will check consent each time until it's valid
     let promises = [];
@@ -102,57 +132,35 @@ export function checkConsent(callback) {
             consentData.sources.gpp.consentString = data.gppString;
 
             for (let i of data.applicableSections || []) {
-              let sectionName = GPP_SECTIONS?.[i];
+              let sectionName = GPP_SECTIONS[i];
               let section = data.parsedSections[sectionName];
 
-              if (!section) {
-                continue;
-              }
+              if (!section) continue;
+              if (Array.isArray(section)) section = section[0];
 
-              if (Array.isArray(section)) {
-                section = section[0];
-              }
-
-              switch (sectionName) {
-                case 'tcfeuv1':
-                case 'tcfeuv2':
-                case 'tcfcav1':
-                  if (section.vendor.consents[CARBON_GVL_ID]) {
-                    consentData.sources.gpp.consent = true;
-                  }
-                  break;
-
-                case 'uspv1':
-                  if (section.uspString.length >= 3) {
-                    const notice = section.uspString[1].toLowerCase();
-                    const optOut = section.uspString[2].toLowerCase();
-                    if (notice === 'y' && optOut === 'n') {
-                      consentData.sources.gpp.consent = true;
-                    }
-                  }
-                  break;
-
-                case 'usnat':
-                case 'usca':
-                case 'usva':
-                case 'usco':
-                case 'usut':
-                case 'usct':
-                case 'usfl':
-                case 'usmt':
-                case 'usor':
-                case 'ustx':
-                case 'usde':
-                case 'usia':
-                case 'usne':
-                case 'usnh':
-                case 'usnj':
-                case 'ustn':
-                  if (section.SharingNotice == 1 && section.SharingOptOut == 1) {
-                    consentData.sources.gpp.consent = true;
-                  }
-                  break;
-              }
+              handleGppSection(sectionName, section, {
+                tcfeuv1: handleGppEUConsent,
+                tcfeuv2: handleGppEUConsent,
+                tcfcav1: handleGppEUConsent,
+                uspv1: handleGppUSPConsent,
+                usnat: handleGppUSNatConsent,
+                usca: handleGppUSNatConsent,
+                usva: handleGppUSNatConsent,
+                usco: handleGppUSNatConsent,
+                usut: handleGppUSNatConsent,
+                usct: handleGppUSNatConsent,
+                usfl: handleGppUSNatConsent,
+                usmt: handleGppUSNatConsent,
+                usor: handleGppUSNatConsent,
+                ustx: handleGppUSNatConsent,
+                usde: handleGppUSNatConsent,
+                usia: handleGppUSNatConsent,
+                usne: handleGppUSNatConsent,
+                usnh: handleGppUSNatConsent,
+                usnj: handleGppUSNatConsent,
+                ustn: handleGppUSNatConsent,
+                default: () => {}
+              });
             }
             resolve();
           }

@@ -46,6 +46,41 @@ let features = {};
 
 export const storage = getStorageManager({moduleType: MODULE_TYPE_RTD, moduleName: MODULE_NAME, gvlid: CARBON_GVL_ID});
 
+export function handleGppEUConsent(section) {
+  if (section.vendor.consents[CARBON_GVL_ID] === true) {
+    return true;
+  } else if (section.vendor.consents[CARBON_GVL_ID] === false) {
+    return false;
+  }
+}
+
+export function handleGppUSPConsent(section) {
+  if (section.uspString.length >= 3) {
+    const notice = section.uspString[1].toLowerCase();
+    const optOut = section.uspString[2].toLowerCase();
+    if (notice === 'y' && optOut === 'n') {
+      return true;
+    } else if (optOut === 'y') {
+      return false;
+    }
+  }
+}
+
+export function handleGppUSNatConsent(section) {
+  if (section.SharingNotice == 1 && section.SharingOptOut == 1) {
+    return true;
+  } else {
+    return false;
+  }
+}
+
+export function handleGppSection(sectionName, section, handlers) {
+  const handler = handlers[sectionName] || handlers.default;
+  if (handler) {
+    return handler(section);
+  }
+}
+
 export function hasConsent(consentData) {
   if (consentData?.gdpr?.gdprApplies) {
     const vendorConsents = consentData?.gdpr?.vendorData?.vendor?.consents;
@@ -71,59 +106,32 @@ export function hasConsent(consentData) {
       let sectionName = GPP_SECTIONS?.[i];
       let section = consentData.gpp.parsedSections[sectionName];
 
-      if (!section) {
-        continue;
-      }
+      if (!section) continue;
+      if (Array.isArray(section)) section = section[0];
 
-      if (Array.isArray(section)) {
-        section = section[0];
-      }
-
-      switch (sectionName) {
-        case 'tcfeuv1':
-        case 'tcfeuv2':
-        case 'tcfcav1':
-          if (section.vendor.consents[CARBON_GVL_ID] === true) {
-            return true;
-          } else if (section.vendor.consents[CARBON_GVL_ID] === false) {
-            return false;
-          }
-          break;
-
-        case 'uspv1':
-          if (section.uspString.length >= 3) {
-            const notice = section.uspString[1].toLowerCase();
-            const optOut = section.uspString[2].toLowerCase();
-            if (notice === 'y' && optOut === 'n') {
-              return true;
-            } else if (optOut === 'y') {
-              return false;
-            }
-          }
-          break;
-
-        case 'usnat':
-        case 'usca':
-        case 'usva':
-        case 'usco':
-        case 'usut':
-        case 'usct':
-        case 'usfl':
-        case 'usmt':
-        case 'usor':
-        case 'ustx':
-        case 'usde':
-        case 'usia':
-        case 'usne':
-        case 'usnh':
-        case 'usnj':
-        case 'ustn':
-          if (section.SharingNotice == 1 && section.SharingOptOut == 1) {
-            return true;
-          } else {
-            return false;
-          }
-      }
+      handleGppSection(sectionName, section, {
+        tcfeuv1: handleGppEUConsent,
+        tcfeuv2: handleGppEUConsent,
+        tcfcav1: handleGppEUConsent,
+        uspv1: handleGppUSPConsent,
+        usnat: handleGppUSNatConsent,
+        usca: handleGppUSNatConsent,
+        usva: handleGppUSNatConsent,
+        usco: handleGppUSNatConsent,
+        usut: handleGppUSNatConsent,
+        usct: handleGppUSNatConsent,
+        usfl: handleGppUSNatConsent,
+        usmt: handleGppUSNatConsent,
+        usor: handleGppUSNatConsent,
+        ustx: handleGppUSNatConsent,
+        usde: handleGppUSNatConsent,
+        usia: handleGppUSNatConsent,
+        usne: handleGppUSNatConsent,
+        usnh: handleGppUSNatConsent,
+        usnj: handleGppUSNatConsent,
+        ustn: handleGppUSNatConsent,
+        default: () => {}
+      });
     }
   }
 
