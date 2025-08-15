@@ -3,7 +3,8 @@ import magniteAdapter, {
   getHostNameFromReferer,
   storage,
   rubiConf,
-  detectBrowserFromUa
+  detectBrowserFromUa,
+  handleUnloadEvent
 } from '../../../modules/magniteAnalyticsAdapter.js';
 import CONSTANTS from 'src/constants.json';
 import { config } from 'src/config.js';
@@ -236,10 +237,11 @@ const ANALYTICS_MESSAGE = {
     'expires': 1519788613781
   },
   'client': {
-    'browser': 'Chrome'
+    'browser': 'Chrome',
   },
   'auctions': [
     {
+      'auctionCount': 1,
       'auctionId': '99785e47-a7c8-4c8a-ae05-ef1c717a4b4d',
       'auctionStart': 1658868383741,
       'samplingFactor': 1,
@@ -444,6 +446,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
+        pbaBrowserLocation: 'client.browser',
         fpkvs: {
           source: 'fb'
         },
@@ -471,6 +474,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
+        pbaBrowserLocation: 'client.browser',
         fpkvs: {
           source: 'fb',
           link: 'email'
@@ -499,6 +503,7 @@ describe('magnite analytics adapter', function () {
         pvid: '12345678',
         wrapperName: '1001_general',
         int_type: 'dmpbjs',
+        pbaBrowserLocation: 'client.browser',
         fpkvs: {
           link: 'iMessage',
           source: 'twitter'
@@ -534,7 +539,10 @@ describe('magnite analytics adapter', function () {
       }
     }
 
+    let beaconStub, cwvObj;
+
     beforeEach(function () {
+      beaconStub = sinon.stub(navigator, 'sendBeacon');
       magniteAdapter.enableAnalytics({
         options: {
           endpoint: '//localhost:9999/event',
@@ -542,6 +550,14 @@ describe('magnite analytics adapter', function () {
         }
       });
       config.setConfig({ rubicon: { updatePageView: true } });
+
+      cwvObj = { cls: 0.0948, fid: 25, lcp: 4386 };
+    });
+
+    afterEach(function () {
+      beaconStub.restore();
+      magniteAdapter.disableAnalytics();
+      getGlobal().rp = undefined;
     });
 
     it('should build a batched message from prebid events', function () {
@@ -579,6 +595,46 @@ describe('magnite analytics adapter', function () {
         'ix',
         'appnexus'
       ]);
+    });
+
+    it('should pass along dmWebVitals if available', function () {
+      getGlobal().rp = {
+        getDmWebVitals: () => cwvObj
+      }
+      performStandardAuction();
+      let message = JSON.parse(server.requests[0].requestBody);
+      expect(message.auctions[0].dmWebVitals).to.deep.equal(cwvObj);
+    });
+
+    it('should handle sending beacon if user leaves while events are pending', function () {
+      getGlobal().rp = {
+        getDmWebVitals: () => cwvObj
+      }
+      // run auction but have it NOT send message
+      performStandardAuction({ eventDelay: 1 })
+
+      // simulate unload
+      handleUnloadEvent();
+
+      // should be a message fired via navigator send beacon
+      expect(beaconStub.calledOnce).to.equal(true);
+      // first args should be the URL
+      expect(beaconStub.firstCall.args[0]).to.equal('//localhost:9999/event');
+
+      // second call is the payload
+      let message = JSON.parse(beaconStub.firstCall.args[1]);
+
+      // should have trigger to unload
+      expect(message.trigger).to.equal('unload');
+
+      // should have missed events counted and include dmWebVitals
+      expect(message.missedEvents).to.deep.equal({
+        accountId: 1001,
+        auctions: 1,
+        bidsWon: 1,
+        gamRenders: 1,
+        dmWebVitals: cwvObj
+      });
     });
 
     [
@@ -1025,6 +1081,34 @@ describe('magnite analytics adapter', function () {
           fpkvs: { link: 'email' }, // link merged in
           pvid: expectedPvid // new pvid stored
         });
+      });
+    });
+
+    it('should send dm wrapper data if set', function () {
+      // Set the confs
+      config.setConfig({
+        rubicon: {
+          wrapperName: '1001_general',
+          wrapperFamily: 'general',
+          rule_name: 'desktop-magnite.com',
+          wrapperModels: ['some-cool-model']
+        }
+      });
+
+      // perform auction
+      performStandardAuction();
+
+      // should be one server call
+      expect(server.requests.length).to.equal(1);
+      let request = server.requests[0];
+      let message = JSON.parse(request.requestBody);
+
+      // should have wrapper data
+      expect(message.wrapper).to.deep.equal({
+        name: '1001_general',
+        family: 'general',
+        rule: 'desktop-magnite.com',
+        modelNames: ['some-cool-model']
       });
     });
 

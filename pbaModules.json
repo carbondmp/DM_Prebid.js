@@ -1,0 +1,18 @@
+[
+  "rubiconBidAdapter",
+  "appnexusBidAdapter",
+  "rubiconAnalyticsAdapter",
+  "magniteAnalyticsAdapter",
+  "priceFloors",
+  "consentManagement",
+  "consentManagementUsp",
+  "gdprEnforcement",
+  "currency",
+  "prebidServerBidAdapter",
+  "userId",
+  "s2sTesting",
+  "liveIntentIdSystem",
+  "gptPreAuction",
+  "debugging",
+  "blockthroughRevShare"
+]
